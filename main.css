@@ -1,0 +1,145 @@
+body {
+    background-color: black;
+    color: white;
+    font-family: 'Courier New', Courier, monospace;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    margin: 10px 20%;
+    background-color: #090909;
+    padding:20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.header,
+.footer,
+.order-form {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px;
+    background-color: #111;
+}
+
+.header.centered {
+    justify-content: center;
+    color: cyan;
+}
+
+.section {
+    display: flex;
+    gap: 10px;
+}
+
+.column {
+    flex: 1;
+    border: 1px solid #333;
+    overflow-y: auto;
+    max-height: 300px;
+    padding: 5px;
+}
+
+.green {
+    color: lime;
+}
+
+.red {
+    color: red;
+}
+
+.yellow {
+    color: yellow;
+}
+
+.button {
+    border: 1px solid #ccc;
+    padding: 5px 10px;
+    margin: 2px;
+    background-color: #222;
+    color: white;
+    cursor: pointer;
+}
+
+.button.buy {
+    border-color: lime;
+}
+.button.buy:hover {
+    background-color: #005500;
+}
+
+.button.sell {
+    border-color: red;
+}
+.button.sell:hover {
+    background-color: #550000;
+}
+
+.button.login {
+    border-color: cyan;
+}
+.button.login:hover {
+    background-color: #005555;
+}
+
+.button.cancel {
+    border-color: yellow;
+}
+.button.cancel:hover {
+    background-color: #555500;
+}
+
+input {
+    background-color: #000;
+    color: white;
+    border: 1px solid #555;
+    padding: 5px;
+}
+
+.order-form {
+    justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.order-box {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.lock-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.lock-section input {
+    width: 150px;
+}
+
+.crt-effect {
+    text-shadow: 0 0 2px #0f0;
+}
+
+.marquee {
+    overflow: hidden;
+    white-space: nowrap;
+    box-sizing: border-box;
+    height: 1em;
+    position: relative;
+}
+
+#node-scroll {
+    display: inline-block;
+    white-space: nowrap;
+    will-change: transform;
+}
+
+.dual-section {
+    display: flex;
+    gap: 10px;
+}

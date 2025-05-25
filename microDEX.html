@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>microDEX Clone</title>
+    <link href="main.css" rel="stylesheet" />
+</head>
+<body>
+  <div class="container">
+    <div class="header centered crt-effect">
+      <span>Sun May 25 12:10:20 2025</span>
+    </div>
+
+    <div class="header centered crt-effect marquee">
+      <div id="node-scroll"></div>
+    </div>
+
+    <div class="header centered">
+      <span>UI 100.0 PAUSE 99.5 PING 0.397 READ 0.00024 DATA 2.7 RUN 16</span>
+    </div>
+
+    <div class="section">
+      <div class="column green">
+        <strong>ORDER BOOK - BUY ORDERS</strong>
+        <pre>
+Qty      Price     Total
+382.17   382.17   1.650...
+765.86   383.70   1.643...
+...       ...       ...</pre>
+      </div>
+      <div class="column red">
+        <strong>ORDER BOOK - SELL ORDERS</strong>
+        <pre>
+Price     Qty      Total
+1.681... 214.73   214.73
+1.682... 512.66   67.39
+...       ...       ...</pre>
+      </div>
+    </div>
+
+    <div class="dual-section">
+      <div class="column yellow">
+        <strong>OPEN ORDERS</strong>
+        <pre>NO OPEN ORDERS IN BTS:HONEST.MONEY</pre>
+      </div>
+
+      <div class="column">
+        <strong>LAST TRADE ORDERS</strong>
+        <pre>
+174818420 LAST TRADE 64727
+174812463 1.6567299 202.54
+...          ...       ...</pre>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div>ASSETS: 7006.18</div>
+      <div>CURRENCY: 463852.2480</div>
+      <div>BITSHARES: 7006.18</div>
+    </div>
+    <div class="footer">
+      <div>ORDERS: 0.00</div>
+      <div>TOTAL: 7006.18 2.4%</div>
+      <div>MAX: 286986.79 BTS</div>
+    </div>
+
+    <div class="order-form">
+      <div class="order-box">
+        <label>BUY PRICE:</label>
+        <input type="text" />
+        <label>BUY AMOUNT:</label>
+        <input type="text" />
+        <button class="button buy">BUY</button>
+      </div>
+      <div class="order-box">
+        <label>SELL PRICE:</label>
+        <input type="text" />
+        <label>SELL AMOUNT:</label>
+        <input type="text" />
+        <button class="button sell">SELL</button>
+      </div>
+    </div>
+
+    <div class="footer">
+      <button class="button cancel">CANCEL ALL</button>
+      <div class="lock-section">
+        <input type="text" placeholder="Username" />
+        <input type="password" placeholder="Key" />
+        <button class="button login">LOCK/UNLOCK</button>
+      </div>
+      <span class="yellow">WALLET LOCKED</span>
+    </div>
+
+    <div class="header centered">
+      <span><em>ORDERS TAKE A FEW SECONDS TO APPEAR; CLICK ONCE, THEN CONFIRM</em></span>
+    </div>
+  </div>
+  <script src="main.js"></script>
+</body>
+</html>
