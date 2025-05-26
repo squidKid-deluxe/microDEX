@@ -1,0 +1,39 @@
+.button.buy {
+    border-color: lime;
+}
+.button.buy:hover {
+    background-color: #005500;
+}
+.button.buy:active {
+    background-color: #009900;
+}
+
+.button.sell {
+    border-color: red;
+}
+.button.sell:hover {
+    background-color: #550000;
+}
+.button.sell:active {
+    background-color: #990000;
+}
+
+.button.login {
+    border-color: cyan;
+}
+.button.login:hover {
+    background-color: #005555;
+}
+.button.login:active {
+    background-color: #009999;
+}
+
+.button.cancel {
+    border-color: yellow;
+}
+.button.cancel:hover {
+    background-color: #555500;
+}
+.button.cancel:active {
+    background-color: #999900;
+}

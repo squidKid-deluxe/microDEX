@@ -1,101 +1,96 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>microDEX Clone</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>microDEX - A Minimalist Bitshares UI</title>
     <link href="main.css" rel="stylesheet" />
+    <link href="buttons.css" rel="stylesheet" />
+    <script type="text/javascript" src="bitsharesjs.min.js"></script>
 </head>
+
 <body>
-  <div class="container">
-    <div class="header centered crt-effect">
-      <span>Sun May 25 12:10:20 2025</span>
-    </div>
+    <div class="container">
+        <pre class="blue header centered glow">
+                                 ______   ________  ____  ____ 
+ Minimalist Bitshares UI 1.0.0  (_   _ `.(_   __  |(_  _)(_  _)
+ __  __  ____  ___  ____   ___    | | `. \ | |_ \_|  \ \__/ /  
+(  \/  )(_  _)/ __)(  _ \ / _ \   | |  | | |  _) _    ) __ (   
+ )    (  _||_( (__  )   /( (_) ) _| |_.' /_| |__/ | _/ /  \ \_ 
+(_/\/\_)(____)\___)(_)\_) \___/ (______.'(________|(____)(____)
 
-    <div class="header centered crt-effect marquee">
-      <div id="node-scroll"></div>
+</pre>
+        <div class="cyan header centered glow">
+            <span id="blocktime">Initializing...</span>
+        </div>
+        <div class="cyan header centered glow marquee">
+            <div id="node-scroll"></div>
+        </div>
+        <div class="cyan header centered glow">
+            <span id="latency">PING 0.0 • READ 0.0 • LATENCY 0.0</span>
+        </div>
+        <div class="section">
+            <div class="column green">
+                <strong class="centered header">ORDER BOOK - BUY ORDERS</strong>
+                <table id="buyOrders"></table>
+            </div>
+            <div class="column red">
+                <strong class="centered header">ORDER BOOK - SELL ORDERS</strong>
+                <table id="sellOrders"></table>
+            </div>
+        </div>
+        <div class="section">
+            <div class="column yellow">
+                <strong class="centered header">OPEN ORDERS</strong>
+                <table id="openOrders"></table>
+            </div>
+            <div class="column">
+                <strong class="centered header">FILL ORDERS</strong>
+                <table id="fillOrders"></table>
+            </div>
+        </div>
+        <div class="section" style="padding:10px">
+            <div class="footer">
+                <div>ASSETS: Nan</div>
+                <div>CURRENCY: Nan</div>
+                <div>BITSHARES: Nan</div>
+            </div>
+            <div class="footer">
+                <div>ORDERS: Nan</div>
+                <div>TOTAL: Nan</div>
+                <div>MAX: Nan</div>
+            </div>
+        </div>
+        <div class="order-form">
+            <div class="order-box">
+                <label>BUY PRICE:</label>
+                <input type="number" id="buy_price"/>
+                <label>BUY AMOUNT:</label>
+                <input type="number" id="buy_amt"/>
+                <button class="button buy" onclick="buy();">BUY</button>
+            </div>
+            <div class="order-box">
+                <label>SELL PRICE:</label>
+                <input type="number" id="sell_price"/>
+                <label>SELL AMOUNT:</label>
+                <input type="number" id="sell_amt"/>
+                <button class="button sell" onclick="sell();">SELL</button>
+            </div>
+        </div>
+        <button class="button cancel" style="width:50%; margin:auto" onclick="cancelAll();">CANCEL ALL</button></span>
+        <div class="footer lock-section">
+            <input type="password" id="wif_input" autocomplete="off" placeholder="WIF" />
+            <button class="button login" onclick="unlock()">LOCK/UNLOCK</button>
+            <span class="yellow" id="wallet-status">WALLET LOCKED</span>
+        </div>
+        <div class="header centered">
+            <span><em>ORDERS TAKE A FEW SECONDS TO APPEAR; CLICK ONCE, THEN CONFIRM</em></span>
+        </div>
     </div>
-
-    <div class="header centered">
-      <span>UI 100.0 PAUSE 99.5 PING 0.397 READ 0.00024 DATA 2.7 RUN 16</span>
-    </div>
-
-    <div class="section">
-      <div class="column green">
-        <strong>ORDER BOOK - BUY ORDERS</strong>
-        <pre>
-Qty      Price     Total
-382.17   382.17   1.650...
-765.86   383.70   1.643...
-...       ...       ...</pre>
-      </div>
-      <div class="column red">
-        <strong>ORDER BOOK - SELL ORDERS</strong>
-        <pre>
-Price     Qty      Total
-1.681... 214.73   214.73
-1.682... 512.66   67.39
-...       ...       ...</pre>
-      </div>
-    </div>
-
-    <div class="dual-section">
-      <div class="column yellow">
-        <strong>OPEN ORDERS</strong>
-        <pre>NO OPEN ORDERS IN BTS:HONEST.MONEY</pre>
-      </div>
-
-      <div class="column">
-        <strong>LAST TRADE ORDERS</strong>
-        <pre>
-174818420 LAST TRADE 64727
-174812463 1.6567299 202.54
-...          ...       ...</pre>
-      </div>
-    </div>
-
-    <div class="footer">
-      <div>ASSETS: 7006.18</div>
-      <div>CURRENCY: 463852.2480</div>
-      <div>BITSHARES: 7006.18</div>
-    </div>
-    <div class="footer">
-      <div>ORDERS: 0.00</div>
-      <div>TOTAL: 7006.18 2.4%</div>
-      <div>MAX: 286986.79 BTS</div>
-    </div>
-
-    <div class="order-form">
-      <div class="order-box">
-        <label>BUY PRICE:</label>
-        <input type="text" />
-        <label>BUY AMOUNT:</label>
-        <input type="text" />
-        <button class="button buy">BUY</button>
-      </div>
-      <div class="order-box">
-        <label>SELL PRICE:</label>
-        <input type="text" />
-        <label>SELL AMOUNT:</label>
-        <input type="text" />
-        <button class="button sell">SELL</button>
-      </div>
-    </div>
-
-    <div class="footer">
-      <button class="button cancel">CANCEL ALL</button>
-      <div class="lock-section">
-        <input type="text" placeholder="Username" />
-        <input type="password" placeholder="Key" />
-        <button class="button login">LOCK/UNLOCK</button>
-      </div>
-      <span class="yellow">WALLET LOCKED</span>
-    </div>
-
-    <div class="header centered">
-      <span><em>ORDERS TAKE A FEW SECONDS TO APPEAR; CLICK ONCE, THEN CONFIRM</em></span>
-    </div>
-  </div>
-  <script src="main.js"></script>
+    <script type="text/javascript" src="signing.js"></script>
+    <script type="text/javascript" src="callbacks.js"></script>
+    <script type="text/javascript" src="updater.js"></script>
 </body>
+
 </html>

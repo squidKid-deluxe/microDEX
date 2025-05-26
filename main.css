@@ -15,81 +15,78 @@ body {
     gap: 10px;
 }
 
+
 .header,
 .footer,
+.section,
 .order-form {
+    flex:1;
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 5px;
-    background-color: #111;
+}
+
+
+/* Media query to change flex direction to column on small screens */
+@media (max-width: 1000px) {
+    .footer {
+        flex-direction: column;
+    }
+    .section {
+        flex-direction: column;
+        width: 100%;
+        max-height: 400px;
+    }
+    .container{
+        margin: 10px 5%;
+    }
 }
 
 .header.centered {
     justify-content: center;
-    color: cyan;
-}
-
-.section {
-    display: flex;
-    gap: 10px;
 }
 
 .column {
     flex: 1;
     border: 1px solid #333;
     overflow-y: auto;
-    max-height: 300px;
+    height: 200px;
+    min-height: 200px;
     padding: 5px;
 }
 
+.hidden {
+    display: none;
+}
+
 .green {
-    color: lime;
+    color: lime !important;
 }
 
 .red {
-    color: red;
+    color: red !important;
 }
 
 .yellow {
-    color: yellow;
+    color: yellow !important;
+}
+
+.blue {
+    color: #2266ff !important;
+}
+.cyan {
+    color: cyan !important;
 }
 
 .button {
     border: 1px solid #ccc;
     padding: 5px 10px;
-    margin: 2px;
+    margin: auto;
+    width:50%;
     background-color: #222;
     color: white;
     cursor: pointer;
-}
-
-.button.buy {
-    border-color: lime;
-}
-.button.buy:hover {
-    background-color: #005500;
-}
-
-.button.sell {
-    border-color: red;
-}
-.button.sell:hover {
-    background-color: #550000;
-}
-
-.button.login {
-    border-color: cyan;
-}
-.button.login:hover {
-    background-color: #005555;
-}
-
-.button.cancel {
-    border-color: yellow;
-}
-.button.cancel:hover {
-    background-color: #555500;
 }
 
 input {
@@ -97,11 +94,14 @@ input {
     color: white;
     border: 1px solid #555;
     padding: 5px;
+    margin:auto;
+    gap: 20px;
 }
 
 .order-form {
     justify-content: space-around;
     flex-wrap: wrap;
+    flex-direction: row;
     gap: 20px;
 }
 
@@ -109,37 +109,65 @@ input {
     display: flex;
     flex-direction: column;
     gap: 5px;
+    width:200px
 }
 
 .lock-section {
     display: flex;
     align-items: center;
     gap: 10px;
+    padding:20px;
 }
 
-.lock-section input {
-    width: 150px;
-}
 
-.crt-effect {
-    text-shadow: 0 0 2px #0f0;
+.glow {
+    text-shadow: 0 0 3px;
 }
 
 .marquee {
     overflow: hidden;
     white-space: nowrap;
     box-sizing: border-box;
-    height: 1em;
+    height: 2em;
     position: relative;
 }
 
 #node-scroll {
     display: inline-block;
     white-space: nowrap;
-    will-change: transform;
+    will-change: transform !important;
 }
 
-.dual-section {
-    display: flex;
-    gap: 10px;
+
+table {
+    flex:1;
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+}
+
+td {
+    text-align: center;
+    font-size: 0.85rem;
+}
+
+
+@keyframes error {
+    0%, 20%, 50%, 80% {
+        rotate: 0;
+    }
+    100% {
+        rotate: 0;
+        color: unset;
+    }
+    40% {
+        rotate: x -40deg;
+    }
+    60% {
+        rotate: x 40deg;
+    }
+}
+
+.animate-error {
+    animation: error 0.5s ease;
 }
