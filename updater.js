@@ -1,5 +1,5 @@
 // Create a new WebSocket connection
-const socket = new WebSocket('ws://localhost:8128/metaNODE');
+const socket = new WebSocket('ws://localhost:8127/metaNODE');
 socket.onopen = function() {
     console.log('metaNODE connection established');
 };
