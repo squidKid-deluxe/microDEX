@@ -1,15 +1,17 @@
-import uvicorn
-import falcon.asgi
 import asyncio
-import os
 import json
-import time
-from traceback import format_exc
-from multiprocessing import Process
-from metaNODE import main as start_metanode
-from metaNODE import spool, PATH
+import os
 import sys
+import time
+from multiprocessing import Process
+from traceback import format_exc
 
+import falcon.asgi
+import uvicorn
+
+from metaNODE import PATH
+from metaNODE import main as start_metanode
+from metaNODE import spool
 
 TEXT_FILE_PATH = os.path.join(PATH, "metaNODE.txt")
 

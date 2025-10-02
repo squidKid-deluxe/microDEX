@@ -29,22 +29,22 @@ litepresence 2019
 # access time with SSD is about 0.0003 seconds
 
 # STANDARD PYTHON MODULES
-from time import time, sleep, ctime, strptime
-from random import random, shuffle, choice
-from multiprocessing import Process, Value
-from json import loads as json_load
-from json import dumps as json_dump
-from traceback import format_exc
-from datetime import datetime
-from statistics import mode
-from calendar import timegm
-from sys import stdout
-from os import popen
 import os
+from calendar import timegm
+from datetime import datetime
+from json import dumps as json_dump
+from json import loads as json_load
+from multiprocessing import Process, Value
+from os import popen
+from random import choice, random, shuffle
+from statistics import mode
+from sys import stdout
+from time import ctime, sleep, strptime, time
+from traceback import format_exc
 
 # MODULES WHICH MAY REQUIRE INSTALLATION
-from requests import get as requests_get
 from psutil import Process as psutil_Process
+from requests import get as requests_get
 from websocket import create_connection as wss
 from websocket import enableTrace
 
