@@ -454,10 +454,10 @@ function updateOrders() {
         sellOrders.innerHTML = '<tr><td>Price</td><td>Volume</td><td>Cumulative</td></tr>';
         cum = 0;
         for (let i = 0; i < metaNode.book.askp.length; i++) {
-            sellOrders.innerHTML += '<tr><td>' + fmt(metaNode.book.askp[i], 8) + '</td>'
-                + '<td>' + fmt(metaNode.book.askv[i]) + '</td>';
             cum += metaNode.book.askv[i];
-            sellOrders.innerHTML += '<td>' + fmt(cum) + '</td></tr>';
+            sellOrders.innerHTML += '<tr><td>' + fmt(metaNode.book.askp[i], 8) + '</td>'
+                + '<td>' + fmt(metaNode.book.askv[i]) + '</td>'
+                + '<td>' + fmt(cum) + '</td></tr>';
         }
 
         // Open orders
