@@ -7,28 +7,134 @@
     <title>microDEX - A Minimalist Bitshares UI</title>
     <link href="main.css" rel="stylesheet" />
     <link href="buttons.css" rel="stylesheet" />
+    <style>
+        /* Settings button */
+        #settings-btn {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 100;
+            background: #111;
+            border: 1px solid #555;
+            color: yellow;
+            padding: 6px 14px;
+            cursor: pointer;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.8rem;
+            border-radius: 4px;
+        }
+        #settings-btn.unconfigured {
+            animation: settings-glow 1.5s ease-in-out infinite;
+        }
+        #settings-btn.configured {
+            color: #666;
+            border-color: #333;
+            animation: none;
+        }
+        @keyframes settings-glow {
+            0%, 100% { box-shadow: 0 0 4px yellow, 0 0 8px rgba(255,255,0,0.3); }
+            50% { box-shadow: 0 0 14px yellow, 0 0 28px rgba(255,255,0,0.7); }
+        }
+
+        /* Settings panel */
+        #settings-panel {
+            display: none;
+            position: fixed;
+            top: 48px;
+            right: 10px;
+            z-index: 100;
+            background: #111;
+            border: 1px solid #555;
+            padding: 16px;
+            border-radius: 6px;
+            min-width: 280px;
+        }
+        #settings-panel.visible {
+            display: block;
+        }
+        #settings-panel label {
+            display: block;
+            margin-top: 10px;
+            margin-bottom: 2px;
+            font-size: 0.7rem;
+            color: #888;
+            text-transform: uppercase;
+        }
+        #settings-panel input {
+            width: 100%;
+            box-sizing: border-box;
+            background: #000;
+            color: white;
+            border: 1px solid #555;
+            padding: 6px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        #settings-panel .settings-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+        #settings-panel .settings-actions button {
+            flex: 1;
+            padding: 6px;
+            font-size: 0.75rem;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        /* Pool status */
+        #pool-status {
+            font-size: 0.7rem;
+            text-align: center;
+            padding: 2px;
+        }
+
+        /* Balance spans */
+        .footer div span {
+            font-weight: bold;
+        }
+    </style>
     <script type="text/javascript" src="bitsharesjs.min.js"></script>
+    <script type="text/javascript" src="graphene-rpc.js"></script>
 </head>
 
 <body>
+    <!-- Settings button (glows until user configures) -->
+    <button id="settings-btn" class="unconfigured" title="Trading Pair Settings">&#9881; Settings</button>
+
+    <!-- Settings panel -->
+    <div id="settings-panel">
+        <strong style="color:cyan;">Trading Pair</strong>
+        <label>Account</label>
+        <input type="text" id="cfg_account" placeholder="e.g. squidkid-deluxe256" />
+        <label>Currency</label>
+        <input type="text" id="cfg_currency" placeholder="e.g. HONEST.MONEY" />
+        <label>Asset</label>
+        <input type="text" id="cfg_asset" placeholder="e.g. BTS" />
+        <div class="settings-actions">
+            <button class="button buy" id="cfg_save">Save &amp; Connect</button>
+            <button class="button cancel" id="cfg_close">Close</button>
+        </div>
+    </div>
+
     <div class="container">
         <pre class="blue header centered glow">
-                                 ______   ________  ____  ____ 
+                                 ______   ________  ____  ____
  Minimalist Bitshares UI 1.0.0  (_   _ `.(_   __  |(_  _)(_  _)
- __  __  ____  ___  ____   ___    | | `. \ | |_ \_|  \ \__/ /  
-(  \/  )(_  _)/ __)(  _ \ / _ \   | |  | | |  _) _    ) __ (   
- )    (  _||_( (__  )   /( (_) ) _| |_.' /_| |__/ | _/ /  \ \_ 
+ __  __  ____  ___  ____   ___    | | `. \ | |_ \_|  \ \__/ /
+(  \/  )(_  _)/ __)(  _ \ / _ \   | |  | | |  _) _    ) __ (
+ )    (  _||_( (__  )   /( (_) ) _| |_.' /_| |__/ | _/ /  \ \_
 (_/\/\_)(____)\___)(_)\_) \___/ (______.'(________|(____)(____)
 
 </pre>
         <div class="cyan header centered glow">
-            <span id="blocktime">Initializing...</span>
+            <span id="blocktime">Connecting...</span>
         </div>
+        <div id="pool-status" class="yellow">Initializing pool...</div>
         <div class="cyan header centered glow marquee">
             <div id="node-scroll"></div>
         </div>
         <div class="cyan header centered glow">
-            <span id="latency">PING 0.0 • READ 0.0 • LATENCY 0.0</span>
+            <span id="latency">PING 0.0 &bull; LATENCY 0.0</span>
         </div>
         <div class="section">
             <div class="column green">
@@ -52,14 +158,14 @@
         </div>
         <div class="section" style="padding:10px">
             <div class="footer">
-                <div>ASSETS: Nan</div>
-                <div>CURRENCY: Nan</div>
-                <div>BITSHARES: Nan</div>
+                <div>ASSETS: <span id="bal-assets">--</span></div>
+                <div>CURRENCY: <span id="bal-currency">--</span></div>
+                <div>BITSHARES: <span id="bal-bts">--</span></div>
             </div>
             <div class="footer">
-                <div>ORDERS: Nan</div>
-                <div>TOTAL: Nan</div>
-                <div>MAX: Nan</div>
+                <div>BUY ORDERS: <span id="bal-buy-orders">--</span></div>
+                <div>SELL ORDERS: <span id="bal-sell-orders">--</span></div>
+                <div>MAX: <span id="bal-max">--</span></div>
             </div>
         </div>
         <div class="order-form">
@@ -78,7 +184,7 @@
                 <button class="button sell" onclick="sell();">SELL</button>
             </div>
         </div>
-        <button class="button cancel" style="width:50%; margin:auto" onclick="cancelAll();">CANCEL ALL</button></span>
+        <button class="button cancel" style="width:50%; margin:auto" onclick="cancelAll();">CANCEL ALL</button>
         <div class="footer lock-section">
             <input type="password" id="wif_input" autocomplete="off" placeholder="WIF" />
             <button class="button login" onclick="unlock()">LOCK/UNLOCK</button>
