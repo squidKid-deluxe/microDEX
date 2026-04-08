@@ -229,8 +229,10 @@
         </div>
         <button class="button cancel" style="width:50%; margin:auto" onclick="cancelAll();">CANCEL ALL</button>
         <div class="footer lock-section">
-            <input type="password" id="wif_input" autocomplete="off" placeholder="WIF" />
-            <button class="button login" onclick="unlock()">LOCK/UNLOCK</button>
+            <div class="lock-row">
+                <input type="password" id="wif_input" autocomplete="off" placeholder="Enter WIF key" />
+                <button class="button login" onclick="unlock()">LOCK / UNLOCK</button>
+            </div>
             <span class="yellow" id="wallet-status">WALLET LOCKED</span>
         </div>
         <div class="header centered">
