@@ -444,49 +444,49 @@ function clock() {
             ' \u2022 LATENCY ' + fmt(Math.max(0, (Date.now()/1000) - metaNode.blocktime), 2)
         );
     }
-    setTimeout(clock, 1000);
 }
 
 // --- Order tables ---
 function updateOrders() {
     if (metaNode.ping) {
-        // Buy orders (bids, descending)
-        buyOrders.innerHTML = '<tr><td>Cumulative</td><td>Volume</td><td>Price</td></tr>';
+        // Build HTML strings first, assign innerHTML once per table (avoids 100+ reflows)
+        let html = '<tr><td>Cumulative</td><td>Volume</td><td>Price</td></tr>';
         let cum = 0;
         for (let i = 0; i < metaNode.book.bidp.length; i++) {
             cum += metaNode.book.bidv[i];
-            buyOrders.innerHTML += '<tr><td>' + fmt(cum) + '</td>'
+            html += '<tr><td>' + fmt(cum) + '</td>'
                 + '<td>' + fmt(metaNode.book.bidv[i]) + '</td>'
                 + '<td>' + fmt(metaNode.book.bidp[i], 8) + '</td></tr>';
         }
+        buyOrders.innerHTML = html;
 
-        // Sell orders (asks, ascending)
-        sellOrders.innerHTML = '<tr><td>Price</td><td>Volume</td><td>Cumulative</td></tr>';
+        html = '<tr><td>Price</td><td>Volume</td><td>Cumulative</td></tr>';
         cum = 0;
         for (let i = 0; i < metaNode.book.askp.length; i++) {
             cum += metaNode.book.askv[i];
-            sellOrders.innerHTML += '<tr><td>' + fmt(metaNode.book.askp[i], 8) + '</td>'
+            html += '<tr><td>' + fmt(metaNode.book.askp[i], 8) + '</td>'
                 + '<td>' + fmt(metaNode.book.askv[i]) + '</td>'
                 + '<td>' + fmt(cum) + '</td></tr>';
         }
+        sellOrders.innerHTML = html;
 
-        // Open orders
-        openOrders.innerHTML = '<tr><td>Type</td><td>Price</td><td>Volume</td></tr>';
+        html = '<tr><td>Type</td><td>Price</td><td>Volume</td></tr>';
         for (let i = 0; i < metaNode.orders.length; i++) {
             const o = metaNode.orders[i];
-            openOrders.innerHTML += '<tr><td>' + o.orderType + '</td>'
+            html += '<tr><td>' + o.orderType + '</td>'
                 + '<td>' + fmt(o.price, 8) + '</td>'
                 + '<td>' + fmt(o.amount) + '</td></tr>';
         }
+        openOrders.innerHTML = html;
 
-        // Fill history
-        fillOrders.innerHTML = '<tr><td>Time</td><td>Price</td><td>Volume</td></tr>';
+        html = '<tr><td>Time</td><td>Price</td><td>Volume</td></tr>';
         for (let i = 0; i < metaNode.history.length; i++) {
             const h = metaNode.history[i];
-            fillOrders.innerHTML += '<tr><td>' + new Date(h[0] * 1000).toLocaleString() + '</td>'
+            html += '<tr><td>' + new Date(h[0] * 1000).toLocaleString() + '</td>'
                 + '<td>' + fmt(h[1], 8) + '</td>'
                 + '<td>' + fmt(h[2]) + '</td></tr>';
         }
+        fillOrders.innerHTML = html;
 
         // Balance labels
         if (lblAssets)    lblAssets.textContent    = cache.asset || 'ASSETS';
@@ -503,7 +503,6 @@ function updateOrders() {
         balSellOrders.textContent= fmt(metaNode.sell_orders, cache.asset_precision || 5);
         balMax.textContent       = fmt(metaNode.asset_max, cache.asset_precision || 5);
     }
-    setTimeout(updateOrders, 1000);
 }
 
 /* ------------------------------------------------------------------ */
@@ -543,7 +542,9 @@ function updateOrders() {
         console.error('Pool connection error:', e);
     }
 
-    // Start DOM loops
-    clock();
-    updateOrders();
+    // Start DOM updates — single interval avoids competing timers
+    setInterval(() => {
+        clock();
+        updateOrders();
+    }, 1000);
 })();
