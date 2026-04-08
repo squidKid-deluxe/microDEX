@@ -402,26 +402,36 @@ const lblBts       = document.getElementById('lbl-bts');
 const lblBuy       = document.getElementById('lbl-buy');
 const lblSell      = document.getElementById('lbl-sell');
 
-// --- Scrolling node list (updated from pool status) ---
-let nodesWidth = 0;
-let offset = 0;
+// --- Scrolling node list — seamless infinite loop ---
+let halfWidth = 0;
+let scrollOffset = 0;
 
 function updateNodeScroll() {
     const urls = pool ? pool.nodes.slice(0, 15) : [];
     const cleaned = urls.map(cleanNode);
     const base = cleaned.join(' \u2022 ') + ' \u2022 ';
-    nodeSpan.textContent = base;
-    nodesWidth = nodeSpan.scrollWidth;
-    // pad to fill screen
-    const repeats = Math.ceil(window.innerWidth / Math.max(nodesWidth, 1)) + 1;
-    nodeSpan.textContent = base.repeat(repeats);
+
+    // Build enough repeats to be wider than the viewport
+    const span = document.createElement('span');
+    span.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;';
+    span.textContent = base;
+    document.body.appendChild(span);
+    const unitWidth = span.scrollWidth;
+    document.body.removeChild(span);
+
+    const repeats = Math.ceil(window.innerWidth / Math.max(unitWidth, 1)) + 2;
+    const half = base.repeat(repeats);
+    nodeSpan.textContent = half + half;  // two identical halves
+    halfWidth = nodeSpan.scrollWidth / 2;
+    scrollOffset = 0;
+
     requestAnimationFrame(animateScroll);
 }
 
 function animateScroll() {
-    offset -= 1.5;
-    if (offset < -nodesWidth) offset = 0;
-    nodeSpan.style.transform = 'translateX(' + offset + 'px)';
+    scrollOffset -= 1.5;
+    if (scrollOffset < -halfWidth) scrollOffset = 0;  // seamless reset
+    nodeSpan.style.transform = 'translateX(' + scrollOffset + 'px)';
     requestAnimationFrame(animateScroll);
 }
 
