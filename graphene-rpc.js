@@ -394,6 +394,10 @@ class GrapheneRPC {
         const ret = await this.query("database", ["lookup_asset_symbols", [
             [cache.asset, cache.currency]
         ]]);
+        console.log('rpcLookupAssetSymbols response:', JSON.stringify(ret, null, 2));
+        if (!ret[0] || !ret[1]) {
+            throw new Error("lookup_asset_symbols returned null — symbols: " + cache.asset + ", " + cache.currency);
+        }
         return [ret[0].id, ret[0].precision, ret[1].id, ret[1].precision];
     }
 
