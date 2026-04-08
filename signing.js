@@ -178,15 +178,32 @@ async function cancelOrders(orderIds) {
     await broadcastTransaction(tr, "Cancel order");
 }
 
-// Helper function to sign and broadcast transactions  
+// Helper function to sign and broadcast transactions
 async function broadcastTransaction(tr, operationType) {
+    // Ensure bitshares-js WebSocket is connected to the pool's current node
+    // so that data reads and writes go through the same endpoint
+    if (typeof pool !== 'undefined' && pool) {
+        try {
+            const status = pool.getNodeStatus();
+            if (status.connected) {
+                await wss_handshake(status.currentNodeUrl);
+            }
+        } catch (e) {
+            console.warn('bitshares-js reconnect warning:', e.message);
+        }
+    }
+
+    if (!_privateKey) {
+        throw new Error('Wallet is locked — unlock before trading');
+    }
+
     try {
-        // Set required fees  
+        // Set required fees
         await tr.set_required_fees();
 
         tr.add_signer(_privateKey);
 
-        // Broadcast the transaction  
+        // Broadcast the transaction
         const result = await tr.broadcast();
         console.log(`${operationType} broadcast successfully:`, result);
         return result;
