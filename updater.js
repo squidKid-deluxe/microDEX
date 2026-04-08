@@ -44,8 +44,8 @@ function esc(s) {
 /*  0.  Default configuration (matches the old metaNODE.py defaults)  */
 /* ------------------------------------------------------------------ */
 const DEFAULTS = {
-    account:  'squidkid-deluxe256',
-    currency: 'HONEST.MONEY',
+    account:  'fast-bot',
+    currency: 'XBTSX.USDT',
     asset:    'BTS'
 };
 
@@ -138,16 +138,11 @@ async function bootstrap(settings) {
     poolStatus.className = 'yellow';
     poolStatus.textContent = 'Resolving account & asset IDs...';
     dlog('info', 'Bootstrap: account=' + settings.account + ' currency=' + settings.currency + ' asset=' + settings.asset);
-    console.log('[BOOT] Starting bootstrap with:', JSON.stringify(settings));
 
     try {
         // Resolve asset symbols → ids + precisions
         dlog('info', 'Calling rpcLookupAssetSymbols...');
-        console.log('[BOOT] Calling rpcLookupAssetSymbols, cache:', JSON.stringify({
-            account: cache.account, asset: cache.asset, currency: cache.currency
-        }));
         const symbols = await pool.rpcLookupAssetSymbols(cache);
-        console.log('[BOOT] rpcLookupAssetSymbols returned:', JSON.stringify(symbols));
         dlog('ok', 'Asset symbols: ' + JSON.stringify(symbols));
 
         // rpcLookupAssetSymbols returns flat array: [id, precision, id, precision]
@@ -155,13 +150,11 @@ async function bootstrap(settings) {
         cache.asset_precision   = symbols[1];
         cache.currency_id       = symbols[2];
         cache.currency_precision= symbols[3];
-        console.log('[BOOT] Cache after asset lookup:', JSON.stringify(cache));
 
         // Resolve account name → account id
         dlog('info', 'Calling rpcLookupAccounts...');
         cache.account_id = await pool.rpcLookupAccounts(cache);
         dlog('ok', 'Account ID: ' + cache.account_id);
-        console.log('[BOOT] Cache fully resolved:', JSON.stringify(cache));
 
         // Populate metaNode skeleton so DOM functions don't crash
         metaNode.account_name   = cache.account_name;
@@ -412,7 +405,7 @@ function clock() {
         clockSpan.innerHTML = 'Blocktime: ' + new Date(metaNode.blocktime * 1000).toLocaleString();
         latencySpan.innerHTML = (
             'PING ' + metaNode.ping.toFixed(2) +
-            ' \u2022 LATENCY ' + ((Date.now()/1000) - metaNode.blocktime).toFixed(2)
+            ' \u2022 LATENCY ' + Math.max(0, (Date.now()/1000) - metaNode.blocktime).toFixed(2)
         );
     }
     setTimeout(clock, 1000);

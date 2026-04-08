@@ -375,14 +375,14 @@ class GrapheneRPC {
      */
     async rpcMarketHistory(cache, now, then, depth = 100) {
         const tradeHistory = await this.query("database", ["get_trade_history", [cache.currency, cache.asset, now, then, depth]]);
+        if (!tradeHistory || tradeHistory.length === 0) return [];
         const history = tradeHistory.map(value => {
             const unix = Math.floor(new Date(value.date).getTime() / 1000);
             const price = this.precision(value.price, 16);
-            if (parseFloat(price) === 0) throw new Error("zero price in history");
+            if (parseFloat(price) === 0) return null;  // skip zero-price entries
             const amount = this.precision(value.amount, cache.asset_precision);
             return [unix, price, amount];
-        });
-        if (history.length === 0) throw new Error("no history");
+        }).filter(x => x !== null);
         return history;
     }
 
@@ -394,7 +394,6 @@ class GrapheneRPC {
         const ret = await this.query("database", ["lookup_asset_symbols", [
             [cache.asset, cache.currency]
         ]]);
-        console.log('rpcLookupAssetSymbols response:', JSON.stringify(ret, null, 2));
         if (!ret[0] || !ret[1]) {
             throw new Error("lookup_asset_symbols returned null — symbols: " + cache.asset + ", " + cache.currency);
         }
@@ -408,9 +407,9 @@ class GrapheneRPC {
     async rpcBlockLatency(storage) {
         const dgp = await this.query("database", ["get_dynamic_global_properties", []]);
         const blocktime = new Date(dgp.time).getTime() / 1000;
-        const latency = Math.min(9.999, (Date.now() / 1000) - blocktime);
+        const latency = Math.max(0, Math.min(9.999, (Date.now() / 1000) - blocktime));
         const max = Math.min(9.999, 3 + 3 * storage.mean_ping);
-        if (latency > max) throw new Error("stale blocktime", latency);
+        if (latency > max) throw new Error("stale blocktime " + latency.toFixed(2));
         return [latency, max, Math.floor(blocktime)];
     }
 
