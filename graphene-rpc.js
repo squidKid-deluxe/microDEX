@@ -440,7 +440,7 @@ class GrapheneRPC {
      * Retrieves current order book data up to specified depth.
      * Uses: cache.currency, cache.asset, cache.asset_precision
      */
-    async rpcBook(cache, depth = 3) {
+    async rpcBook(cache, depth = 100) {
         const orderBook = await this.query("database", ["get_order_book", [cache.currency, cache.asset, depth]]);
         const askp = [],
             bidp = [],
