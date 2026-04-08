@@ -138,21 +138,30 @@ async function bootstrap(settings) {
     poolStatus.className = 'yellow';
     poolStatus.textContent = 'Resolving account & asset IDs...';
     dlog('info', 'Bootstrap: account=' + settings.account + ' currency=' + settings.currency + ' asset=' + settings.asset);
+    console.log('[BOOT] Starting bootstrap with:', JSON.stringify(settings));
 
     try {
         // Resolve asset symbols → ids + precisions
         dlog('info', 'Calling rpcLookupAssetSymbols...');
+        console.log('[BOOT] Calling rpcLookupAssetSymbols, cache:', JSON.stringify({
+            account: cache.account, asset: cache.asset, currency: cache.currency
+        }));
         const symbols = await pool.rpcLookupAssetSymbols(cache);
+        console.log('[BOOT] rpcLookupAssetSymbols returned:', JSON.stringify(symbols));
         dlog('ok', 'Asset symbols: ' + JSON.stringify(symbols));
-        cache.asset_id          = symbols[0].id;
-        cache.asset_precision   = symbols[0].precision;
-        cache.currency_id       = symbols[1].id;
-        cache.currency_precision= symbols[1].precision;
+
+        // rpcLookupAssetSymbols returns flat array: [id, precision, id, precision]
+        cache.asset_id          = symbols[0];
+        cache.asset_precision   = symbols[1];
+        cache.currency_id       = symbols[2];
+        cache.currency_precision= symbols[3];
+        console.log('[BOOT] Cache after asset lookup:', JSON.stringify(cache));
 
         // Resolve account name → account id
         dlog('info', 'Calling rpcLookupAccounts...');
         cache.account_id = await pool.rpcLookupAccounts(cache);
         dlog('ok', 'Account ID: ' + cache.account_id);
+        console.log('[BOOT] Cache fully resolved:', JSON.stringify(cache));
 
         // Populate metaNode skeleton so DOM functions don't crash
         metaNode.account_name   = cache.account_name;
