@@ -441,7 +441,21 @@ class GrapheneRPC {
      * Uses: cache.currency, cache.asset, cache.asset_precision
      */
     async rpcBook(cache, depth = 100) {
-        const orderBook = await this.query("database", ["get_order_book", [cache.currency, cache.asset, depth]]);
+        const offset = depth > 50 ? depth - 50 : 0;
+        const first = Math.min(depth, 50);
+        let orderBook;
+        if (offset > 0) {
+            const [firstCall, secondCall] = await Promise.all([
+                this.query("database", ["get_order_book", [cache.currency, cache.asset, first]]),
+                this.query("database", ["get_order_book", [cache.currency, cache.asset, offset, first]])
+            ]);
+            orderBook = {
+                asks: firstCall.asks.concat(secondCall.asks),
+                bids: firstCall.bids.concat(secondCall.bids)
+            };
+        } else {
+            orderBook = await this.query("database", ["get_order_book", [cache.currency, cache.asset, first]]);
+        }
         const askp = [],
             bidp = [],
             askv = [],
