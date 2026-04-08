@@ -117,6 +117,14 @@ cfgClose.addEventListener('click', () => {
     settingsPanel.classList.remove('visible');
 });
 
+// Close panels when clicking outside
+document.addEventListener('click', (e) => {
+    const inSettings = settingsPanel.contains(e.target) || settingsBtn.contains(e.target);
+    const inDebug    = debugPanel.contains(e.target)  || debugToggle.contains(e.target);
+    if (!inSettings) settingsPanel.classList.remove('visible');
+    if (!inDebug)    debugPanel.classList.remove('visible');
+});
+
 cfgSave.addEventListener('click', async () => {
     const s = readSettingsForm();
     saveSettings(s);
