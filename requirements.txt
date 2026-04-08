@@ -1,5 +1,0 @@
-psutil
-requests
-websocket-client
-falcon.asgi
-uvicorn
