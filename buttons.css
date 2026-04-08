@@ -1,39 +1,77 @@
+/* ================================================================
+   microDEX — Button styles
+   Vivid borders with smooth transitions
+   ================================================================ */
+
+.button {
+    border: 1px solid;
+    padding: 7px 14px;
+    margin: auto;
+    width: 50%;
+    background-color: #1a1a1a;
+    color: #e0e0e0;
+    cursor: pointer;
+    font-family: system-ui, sans-serif;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-radius: 3px;
+    transition: all 0.15s ease;
+}
+
 .button.buy {
-    border-color: lime;
+    border-color: #00e676;
+    color: #00e676;
 }
 .button.buy:hover {
-    background-color: #005500;
+    background-color: #00e676;
+    color: #000;
+    box-shadow: 0 0 12px rgba(0, 230, 118, 0.3);
 }
 .button.buy:active {
-    background-color: #009900;
+    background-color: #00c853;
+    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.3);
 }
 
 .button.sell {
-    border-color: red;
+    border-color: #ff5252;
+    color: #ff5252;
 }
 .button.sell:hover {
-    background-color: #550000;
+    background-color: #ff5252;
+    color: #000;
+    box-shadow: 0 0 12px rgba(255, 82, 82, 0.3);
 }
 .button.sell:active {
-    background-color: #990000;
+    background-color: #d32f2f;
+    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.3);
 }
 
 .button.login {
-    border-color: cyan;
+    border-color: #00e5ff;
+    color: #00e5ff;
 }
 .button.login:hover {
-    background-color: #005555;
+    background-color: #00e5ff;
+    color: #000;
+    box-shadow: 0 0 12px rgba(0, 229, 255, 0.3);
 }
 .button.login:active {
-    background-color: #009999;
+    background-color: #00b8d4;
+    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.3);
 }
 
 .button.cancel {
-    border-color: yellow;
+    border-color: #ffd600;
+    color: #ffd600;
 }
 .button.cancel:hover {
-    background-color: #555500;
+    background-color: #ffd600;
+    color: #000;
+    box-shadow: 0 0 12px rgba(255, 214, 0, 0.3);
 }
 .button.cancel:active {
-    background-color: #999900;
+    background-color: #f9a825;
+    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.3);
 }

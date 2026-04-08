@@ -1,162 +1,259 @@
+/* ================================================================
+   microDEX — Redefined Dark UI
+   Three depth layers: body (#000) > container (#0d0d0d) > cards (#141414)
+   ================================================================ */
+
+/* --- Color tokens --- */
+:root {
+    --bg-body:      #000000;
+    --bg-container: #0d0d0d;
+    --bg-card:      #141414;
+    --bg-card-hover:#1a1a1a;
+    --bg-input:     #0a0a0a;
+
+    --text:         #e0e0e0;
+    --text-muted:   #888;
+    --text-header:  #aaa;
+
+    --green:  #00e676;
+    --red:    #ff5252;
+    --yellow: #ffd600;
+    --blue:   #448aff;
+    --cyan:   #00e5ff;
+
+    --border:       #2a2a2a;
+    --border-accent: #333;
+    --radius:       4px;
+    --radius-sm:    2px;
+}
+
 body {
-    background-color: black;
-    color: white;
-    font-family: 'Courier New', Courier, monospace;
+    background-color: var(--bg-body);
+    color: var(--text);
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     margin: 0;
     padding: 0;
+    -webkit-font-smoothing: antialiased;
 }
 
 .container {
-    margin: 10px 20%;
-    background-color: #090909;
-    padding:20px;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 32px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 16px;
+    min-height: 100vh;
 }
 
-
+/* --- Shared sections --- */
 .header,
 .footer,
 .section,
 .order-form {
-    flex:1;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 5px;
+    padding: 0;
 }
 
-
-/* Media query to change flex direction to column on small screens */
-@media (max-width: 1000px) {
-    .footer {
-        flex-direction: column;
-    }
-    .section {
-        flex-direction: column;
-        width: 100%;
-        max-height: 400px;
-    }
-    .container{
-        margin: 10px 5%;
-    }
+.header, .footer {
+    padding: 8px 0;
 }
 
 .header.centered {
     justify-content: center;
 }
 
+.section {
+    gap: 12px;
+}
+
+/* --- Card containers (columns) --- */
 .column {
     flex: 1;
-    border: 1px solid #333;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
     overflow-y: auto;
-    height: 200px;
-    min-height: 200px;
-    padding: 5px;
+    overflow-x: hidden;
+    height: 220px;
+    min-height: 160px;
+    padding: 8px 10px;
+    transition: background 0.2s ease;
+    scrollbar-width: thin;
+    scrollbar-color: #333 transparent;
 }
+.column::-webkit-scrollbar { width: 6px; }
+.column::-webkit-scrollbar-track { background: transparent; }
+.column::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
 
-.hidden {
-    display: none;
-}
+.column.green  { border-left: 3px solid var(--green); }
+.column.red    { border-left: 3px solid var(--red); }
+.column.yellow { border-left: 3px solid var(--yellow); }
+.column        { border-left: 3px solid var(--border-accent); }
 
-.green {
-    color: lime !important;
-}
+/* --- Colors (vivid but tuned) --- */
+.green  { color: var(--green) !important; }
+.red    { color: var(--red) !important; }
+.yellow { color: var(--yellow) !important; }
+.blue   { color: var(--blue) !important; }
+.cyan   { color: var(--cyan) !important; }
 
-.red {
-    color: red !important;
-}
-
-.yellow {
-    color: yellow !important;
-}
-
-.blue {
-    color: #2266ff !important;
-}
-.cyan {
-    color: cyan !important;
-}
-
-.button {
-    border: 1px solid #ccc;
-    padding: 5px 10px;
-    margin: auto;
-    width:50%;
-    background-color: #222;
-    color: white;
-    cursor: pointer;
-}
-
-input {
-    background-color: #000;
-    color: white;
-    border: 1px solid #555;
-    padding: 5px;
-    margin:auto;
-    gap: 20px;
-}
-
-.order-form {
-    justify-content: space-around;
-    flex-wrap: wrap;
-    flex-direction: row;
-    gap: 20px;
-}
-
-.order-box {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    width:200px
-}
-
-.lock-section {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding:20px;
-}
-
-
+/* --- Glow effect --- */
 .glow {
-    text-shadow: 0 0 3px;
+    text-shadow: 0 0 8px currentColor;
 }
 
-.marquee {
-    overflow: hidden;
-    white-space: nowrap;
-    box-sizing: border-box;
-    height: 2em;
-    position: relative;
-}
-
-#node-scroll {
-    display: inline-block;
-    white-space: nowrap;
-    will-change: transform !important;
-}
-
-
+/* --- Table polish --- */
 table {
-    flex:1;
     width: 100%;
     table-layout: fixed;
     border-collapse: collapse;
 }
-
 td {
     text-align: center;
-    font-size: 0.85rem;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+    padding: 3px 2px;
+    white-space: nowrap;
+}
+tr:hover td {
+    background: var(--bg-card-hover);
+}
+tr:first-child td {
+    color: var(--text-header);
+    font-weight: 600;
+    font-family: system-ui, sans-serif;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 5px;
+    margin-bottom: 5px;
 }
 
+/* --- Footer / Balance bar --- */
+.footer {
+    gap: 16px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+.footer div {
+    white-space: nowrap;
+}
+.footer div span[id^="lbl-"] {
+    color: var(--text-header);
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.footer div span[id^="bal-"] {
+    color: var(--text);
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    font-variant-numeric: tabular-nums;
+}
 
-@keyframes error {
-    0%, 20%, 50%, 80% {
-        rotate: 0;
+/* --- Order form --- */
+.order-form {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 24px;
+    padding: 16px 0;
+}
+.order-box {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 200px;
+}
+.order-box label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+/* --- Inputs --- */
+input {
+    background: var(--bg-input);
+    color: var(--text);
+    border: 1px solid var(--border-accent);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    font-size: 0.85rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    outline: none;
+}
+input:focus {
+    border-color: var(--cyan);
+    box-shadow: 0 0 0 2px rgba(0, 229, 255, 0.15);
+}
+input::placeholder {
+    color: #555;
+}
+
+/* --- Lock section --- */
+.lock-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 0;
+    justify-content: center;
+}
+
+/* --- Marquee --- */
+.marquee {
+    overflow: hidden;
+    white-space: nowrap;
+    box-sizing: border-box;
+    height: 1.5em;
+    position: relative;
+    mask-image:
+        linear-gradient(to right,
+            transparent 0%,
+            black 8%,
+            black 92%,
+            transparent 100%
+        );
+    -webkit-mask-image:
+        linear-gradient(to right,
+            transparent 0%,
+            black 8%,
+            black 92%,
+            transparent 100%
+        );
+}
+#node-scroll {
+    display: inline-block;
+    white-space: nowrap;
+    will-change: transform !important;
+    color: var(--cyan);
+    font-size: 0.75rem;
+}
+
+/* --- Responsive --- */
+@media (max-width: 1000px) {
+    .footer {
+        flex-direction: column;
+        gap: 6px;
     }
-    100% {
+    .section {
+        flex-direction: column;
+        width: 100%;
+        max-height: 360px;
+    }
+    .container {
+        padding: 16px;
+    }
+}
+
+/* --- Error animation --- */
+@keyframes error {
+    0%, 20%, 50%, 80%, 100% {
         rotate: 0;
         color: unset;
     }
@@ -167,7 +264,6 @@ td {
         rotate: x 40deg;
     }
 }
-
 .animate-error {
     animation: error 0.5s ease;
 }
