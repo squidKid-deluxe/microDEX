@@ -1,138 +1,433 @@
-// Create a new WebSocket connection
-const socket = new WebSocket('ws://localhost:8127/metaNODE');
-socket.onopen = function() {
-    console.log('metaNODE connection established');
+// ============================================================
+// microDEX — Client-only data layer
+// Replaces the old Python metaNODE + serve_metanode pipeline
+// with a browser-native GrapheneRPCPool.
+// ============================================================
+
+/* ------------------------------------------------------------------ */
+/*  0.  Default configuration (matches the old metaNODE.py defaults)  */
+/* ------------------------------------------------------------------ */
+const DEFAULTS = {
+    account:  'squidkid-deluxe256',
+    currency: 'HONEST.MONEY',
+    asset:    'BTS'
 };
-socket.onmessage = handleMetaNode;
-socket.onclose = function() {
-    console.log('metaNODE connection closed');
-};
-socket.onerror = function(error) {
-    console.error('metaNODE connection error:', error);
-};
 
-const nodeSpan = document.getElementById("node-scroll");
+const STORAGE_KEY = 'microdex_settings';
 
-var metaNode = {}
-var nodesWidth = 0;
-let connected = false;
+/* ------------------------------------------------------------------ */
+/*  1.  Global state (read by signing.js, callbacks.js)               */
+/* ------------------------------------------------------------------ */
+var metaNode = {};          // populated by the poll loop
+var pool       = null;      // GrapheneRPCPool instance
+var cache      = {};        // resolved IDs / precisions
+var polling    = false;     // poll-loop guard
 
-async function handleMetaNode(data) {
-    metaNode = JSON.parse(data.data);
+/* ------------------------------------------------------------------ */
+/*  2.  Settings UI                                                   */
+/* ------------------------------------------------------------------ */
+const settingsBtn     = document.getElementById('settings-btn');
+const settingsPanel   = document.getElementById('settings-panel');
+const cfgAccount      = document.getElementById('cfg_account');
+const cfgCurrency     = document.getElementById('cfg_currency');
+const cfgAsset        = document.getElementById('cfg_asset');
+const cfgSave         = document.getElementById('cfg_save');
+const cfgClose        = document.getElementById('cfg_close');
+const poolStatus      = document.getElementById('pool-status');
 
-    const cleanedNodes = metaNode.whitelist.map(cleanNode);
-    const baseScrollText = cleanedNodes.join(" • ") + " • ";
+// Load saved settings or use defaults
+function loadSettings() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        if (saved) return { ...DEFAULTS, ...saved };
+    } catch (_) {}
+    return { ...DEFAULTS };
+}
 
-    nodeSpan.textContent = baseScrollText;
-    nodesWidth = nodeSpan.scrollWidth;
-    for (var i = 0; i < window.innerWidth % nodesWidth; i++) {
-        nodeSpan.textContent += baseScrollText;
+function saveSettings(s) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+}
+
+function updateSettingsButton(hasUserSaved) {
+    if (hasUserSaved) {
+        settingsBtn.classList.remove('unconfigured');
+        settingsBtn.classList.add('configured');
+    } else {
+        settingsBtn.classList.remove('configured');
+        settingsBtn.classList.add('unconfigured');
     }
+}
 
-    if (!connected) {
+function fillSettingsForm(s) {
+    cfgAccount.value  = s.account;
+    cfgCurrency.value = s.currency;
+    cfgAsset.value    = s.asset;
+}
+
+function readSettingsForm() {
+    return {
+        account:  cfgAccount.value.trim()  || DEFAULTS.account,
+        currency: cfgCurrency.value.trim().toUpperCase() || DEFAULTS.currency,
+        asset:    cfgAsset.value.trim().toUpperCase()    || DEFAULTS.asset
+    };
+}
+
+settingsBtn.addEventListener('click', () => {
+    const visible = settingsPanel.classList.toggle('visible');
+    if (visible) fillSettingsForm(loadSettings());
+});
+
+cfgClose.addEventListener('click', () => {
+    settingsPanel.classList.remove('visible');
+});
+
+cfgSave.addEventListener('click', async () => {
+    const s = readSettingsForm();
+    saveSettings(s);
+    updateSettingsButton(true);
+    settingsPanel.classList.remove('visible');
+    poolStatus.className = 'yellow';
+    poolStatus.textContent = 'Reconnecting with new settings...';
+    await bootstrap(s);
+});
+
+/* ------------------------------------------------------------------ */
+/*  3.  Bootstrap: resolve cache from pool                            */
+/* ------------------------------------------------------------------ */
+async function bootstrap(settings) {
+    cache.account_name  = settings.account;
+    cache.currency      = settings.currency;
+    cache.asset         = settings.asset;
+
+    poolStatus.className = 'yellow';
+    poolStatus.textContent = 'Resolving account & asset IDs...';
+
+    try {
+        // Resolve asset symbols → ids + precisions
+        const symbols = await pool.rpcLookupAssetSymbols(cache);
+        cache.asset_id          = symbols[0].id;
+        cache.asset_precision   = symbols[0].precision;
+        cache.currency_id       = symbols[1].id;
+        cache.currency_precision= symbols[1].precision;
+
+        // Resolve account name → account id
+        cache.account_id = await pool.rpcLookupAccounts(cache);
+
+        // Populate metaNode skeleton so DOM functions don't crash
+        metaNode.account_name   = cache.account_name;
+        metaNode.account_id     = cache.account_id;
+        metaNode.asset          = cache.asset;
+        metaNode.asset_id       = cache.asset_id;
+        metaNode.asset_precision= cache.asset_precision;
+        metaNode.currency       = cache.currency;
+        metaNode.currency_id    = cache.currency_id;
+        metaNode.currency_precision = cache.currency_precision;
+        metaNode.pair           = cache.asset + ':' + cache.currency;
+        metaNode.book           = { bidp: [], bidv: [], askp: [], askv: [] };
+        metaNode.history        = [];
+        metaNode.orders         = [];
+        metaNode.ping           = 0;
+        metaNode.blocktime      = 0;
+        metaNode.last           = 0;
+        metaNode.bts_balance    = 0;
+        metaNode.asset_balance  = 0;
+        metaNode.currency_balance = 0;
+        metaNode.buy_orders     = 0;
+        metaNode.sell_orders    = 0;
+        metaNode.currency_holding = 0;
+        metaNode.asset_holding  = 0;
+        metaNode.currency_max   = 0;
+        metaNode.asset_max      = 0;
+        metaNode.invested       = 0;
+        metaNode.divested       = 0;
+        metaNode.whitelist      = pool.nodes.slice();
+        metaNode.file_read      = 0;
+
+        poolStatus.className = 'green';
+        poolStatus.textContent = 'Connected — starting data poll...';
+
+        // Also set up the bitshares-js WebSocket for signing (used by signing.js)
         try {
-            // aka `wss_handshake(random.choice(whitelist))`
-            await wss_handshake(metaNode.whitelist[Math.floor(Math.random() * metaNode.whitelist.length)]);
-            connected = true;
+            const status = pool.getNodeStatus();
+            if (status.connected) {
+                await wss_handshake(status.currentNodeUrl);
+            }
         } catch (e) {
-            console.log(`Failed to connect to bitshares node: ${e}`);
-            connected = false;
+            console.warn('bitshares-js handshake failed (signing will retry):', e);
         }
+
+        if (!polling) {
+            polling = true;
+            pollLoop();
+        }
+
+    } catch (e) {
+        poolStatus.className = 'red';
+        poolStatus.textContent = 'Bootstrap failed: ' + e.message;
+        console.error('Bootstrap error:', e);
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/*  4.  Poll loop — gathers all data and updates metaNode             */
+/* ------------------------------------------------------------------ */
+const POLL_INTERVAL = 2500;   // ms between full polls
+
+async function pollLoop() {
+    while (true) {
+        await tick();
+        await sleep(POLL_INTERVAL);
+    }
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function tick() {
+    try {
+        const now  = Math.floor(Date.now() / 1000);
+        const then = now - 3 * 86400;   // 3 days of history
+
+        // -- block latency / ping --
+        let ping = metaNode.ping || 0.5;
+        let blocktime = now;
+        try {
+            const bl = await pool.rpcBlockLatency({ mean_ping: ping });
+            // bl = [latency, max, blocktime]
+            blocktime = bl[2];
+            ping = Math.min(1, (19 * ping + bl[0]) / 20);
+        } catch (_) { /* keep old ping */ }
+
+        // -- last price --
+        let last = metaNode.last || 0;
+        try { last = parseFloat(await pool.rpcLast(cache)); } catch (_) {}
+
+        // -- order book --
+        let book = metaNode.book;
+        try {
+            const [askp, bidp, askv, bidv] = await pool.rpcBook(cache);
+            book = { askp, bidp, askv, bidv };
+        } catch (_) {}
+
+        // -- trade history --
+        let history = metaNode.history;
+        try {
+            history = await pool.rpcMarketHistory(cache, now.toString(), then.toString());
+        } catch (_) {}
+
+        // -- open orders --
+        let orders = metaNode.orders;
+        try {
+            orders = await pool.rpcOpenOrders(cache);
+        } catch (_) {}
+
+        // -- balances --
+        let bts_balance = metaNode.bts_balance || 0;
+        let asset_balance = metaNode.asset_balance || 0;
+        let currency_balance = metaNode.currency_balance || 0;
+        try {
+            const ids  = [cache.asset_id, cache.currency_id];
+            const precs = [cache.asset_precision, cache.currency_precision];
+            const bals = await pool.rpcAccountBalances(cache, ids, precs);
+            bts_balance    = bals['1.3.0']    || 0;
+            asset_balance  = bals[cache.asset_id]  || 0;
+            currency_balance = bals[cache.currency_id] || 0;
+        } catch (_) {}
+
+        // -- computed fields (same logic as metaNODE.py bifurcation) --
+        let buy_orders = 0, sell_orders = 0;
+        for (const o of orders) {
+            if (o.orderType === 'buy')  buy_orders  += parseFloat(o.amount) * parseFloat(o.price);
+            if (o.orderType === 'sell') sell_orders += parseFloat(o.amount);
+        }
+        buy_orders  = parseFloat(buy_orders.toFixed(cache.currency_precision));
+        sell_orders = parseFloat(sell_orders.toFixed(cache.asset_precision));
+
+        const currency_holding = currency_balance + buy_orders;
+        const asset_holding    = asset_balance  + sell_orders;
+        const currency_max     = currency_holding + asset_holding * last;
+        const asset_max        = currency_max / (last || 1);
+        const invested         = last ? 100 * asset_holding / asset_max : 0;
+        const divested         = 100 - invested;
+
+        // -- write global metaNode --
+        metaNode.ping            = ping;
+        metaNode.blocktime       = blocktime;
+        metaNode.last            = last;
+        metaNode.book            = book;
+        metaNode.history         = history;
+        metaNode.orders          = orders;
+        metaNode.bts_balance     = bts_balance;
+        metaNode.asset_balance   = asset_balance;
+        metaNode.currency_balance= currency_balance;
+        metaNode.buy_orders      = buy_orders;
+        metaNode.sell_orders     = sell_orders;
+        metaNode.currency_holding= parseFloat(currency_holding.toFixed(cache.currency_precision));
+        metaNode.asset_holding   = parseFloat(asset_holding.toFixed(cache.asset_precision));
+        metaNode.currency_max    = parseFloat(currency_max.toFixed(cache.currency_precision));
+        metaNode.asset_max       = parseFloat(asset_max.toFixed(cache.asset_precision));
+        metaNode.invested        = parseFloat(invested.toFixed(1));
+        metaNode.divested        = parseFloat(divested.toFixed(1));
+        metaNode.file_read       = 0;
+
+        // -- pool status line --
+        try {
+            const st = pool.getNodeStatus();
+            const h  = st.health || {};
+            const lat = st.connected && pool.activeInstance
+                ? pool.activeInstance.pingLatency : 0;
+            poolStatus.className = 'green';
+            poolStatus.textContent = 'Node: ' + cleanNode(st.currentNodeUrl)
+                + '  |  Retry: ' + (h.consecutiveFailures || 0);
+        } catch (_) {}
+
+    } catch (e) {
+        console.error('poll tick error:', e);
     }
 }
 
 function cleanNode(url) {
-    return url.replace("wss://", "")
-        .replace("/wss", "")
-        .replace("/ws", "")
-        .split("/")[0]
-        .split(":")[0];
-};
+    return url.replace('wss://', '').replace('/wss', '').replace('/ws', '')
+              .split('/')[0].split(':')[0];
+}
 
+/* ------------------------------------------------------------------ */
+/*  5.  DOM updaters (adapted from original updater.js)               */
+/* ------------------------------------------------------------------ */
+const nodeSpan = document.getElementById('node-scroll');
 
+const clockSpan  = document.getElementById('blocktime');
+const latencySpan= document.getElementById('latency');
+
+const buyOrders    = document.getElementById('buyOrders');
+const sellOrders   = document.getElementById('sellOrders');
+const openOrders   = document.getElementById('openOrders');
+const fillOrders   = document.getElementById('fillOrders');
+
+const balAssets    = document.getElementById('bal-assets');
+const balCurrency  = document.getElementById('bal-currency');
+const balBts       = document.getElementById('bal-bts');
+const balBuyOrders = document.getElementById('bal-buy-orders');
+const balSellOrders= document.getElementById('bal-sell-orders');
+const balMax       = document.getElementById('bal-max');
+
+// --- Scrolling node list (updated from pool status) ---
+let nodesWidth = 0;
 let offset = 0;
 
+function updateNodeScroll() {
+    const urls = pool ? pool.nodes.slice(0, 15) : [];
+    const cleaned = urls.map(cleanNode);
+    const base = cleaned.join(' \u2022 ') + ' \u2022 ';
+    nodeSpan.textContent = base;
+    nodesWidth = nodeSpan.scrollWidth;
+    // pad to fill screen
+    const repeats = Math.ceil(window.innerWidth / Math.max(nodesWidth, 1)) + 1;
+    nodeSpan.textContent = base.repeat(repeats);
+    requestAnimationFrame(animateScroll);
+}
 
-const clockSpan = document.getElementById("blocktime");
-const latencySpan = document.getElementById("latency");
+function animateScroll() {
+    offset -= 1.5;
+    if (offset < -nodesWidth) offset = 0;
+    nodeSpan.style.transform = 'translateX(' + offset + 'px)';
+    requestAnimationFrame(animateScroll);
+}
 
+// --- Clock & latency ---
 function clock() {
     if (metaNode.ping) {
-        clockSpan.innerHTML = "Blocktime: " + new Date(metaNode.blocktime * 1000).toLocaleString();
+        clockSpan.innerHTML = 'Blocktime: ' + new Date(metaNode.blocktime * 1000).toLocaleString();
         latencySpan.innerHTML = (
-            `PING ${metaNode.ping.toFixed(2)}` +
-            ` • READ ${metaNode.file_read.toFixed(6)}` +
-            ` • LATENCY ${((new Date()/1000)-metaNode.blocktime).toFixed(2)}`
+            'PING ' + metaNode.ping.toFixed(2) +
+            ' \u2022 LATENCY ' + ((Date.now()/1000) - metaNode.blocktime).toFixed(2)
         );
     }
     setTimeout(clock, 1000);
 }
 
-clock();
-
-
-
-const buyOrders = document.getElementById("buyOrders");
-const sellOrders = document.getElementById("sellOrders");
-const openOrders = document.getElementById("openOrders");
-const fillOrders = document.getElementById("fillOrders");
-
-const orderElements = [buyOrders, sellOrders, openOrders, fillOrders];
-const orderTypes = ["buy", "sell", "open", "fill"];
-
+// --- Order tables ---
 function updateOrders() {
     if (metaNode.ping) {
-        for (var typedx = 0; typedx < 4; typedx++) {
-            let element = orderElements[typedx];
-            let type = orderTypes[typedx];
-            if (type === "buy") {
-                element.innerHTML = `<tr><td>Cumulative</td><td>Volume</td><td>Price</td></tr>`;
-                let cumulated = 0;
-                for (var i = 0; i < metaNode.book.bidp.length; i++) {
-                    cumulated += metaNode.book.bidv[i]
-                    element.innerHTML += `<tr><td>${cumulated.toFixed(6)}</td>` +
-                        `<td>${metaNode.book.bidv[i].toFixed(6)}</td>` +
-                        `<td>${metaNode.book.bidp[i].toFixed(8)}</td></tr>`;
-                }
-            } else if (type === "sell") {
-                element.innerHTML = `<tr><td>Price</td><td>Volume</td><td>Cumulative</td></tr>`;
-                let cumulated = 0;
-                for (var i = 0; i < metaNode.book.askp.length; i++) {
-                    cumulated += metaNode.book.askv[i]
-                    element.innerHTML += `<tr><td>${metaNode.book.askp[i].toFixed(8)}</td>` +
-                        `<td>${metaNode.book.askv[i].toFixed(6)}</td>` +
-                        `<td>${cumulated.toFixed(6)}</td></tr>`;
-                }
-            } else if (type === "open") {
-                "orders"
-                element.innerHTML = `<tr><td>Type</td><td>Price</td><td>Volume</td></tr>`;
-                for (var i = 0; i < metaNode.orders.length; i++) {
-                    element.innerHTML += `<tr><td>${metaNode.orders[i].orderType}</td>` +
-                        `<td>${parseFloat(metaNode.orders[i].amount).toFixed(8)}</td>` +
-                        `<td>${parseFloat(metaNode.orders[i].price).toFixed(6)}</td></tr>`;
-                }
-            } else if (type === "fill") {
-                element.innerHTML = `<tr><td>Time</td><td>Price</td><td>Volume</td></tr>`;
-                for (var i = 0; i < metaNode.history.length; i++) {
-                    element.innerHTML += `<tr><td>${new Date(metaNode.history[i][0] * 1000).toLocaleString()}</td>` +
-                        `<td>${parseFloat(metaNode.history[i][1]).toFixed(8)}</td>` +
-                        `<td>${parseFloat(metaNode.history[i][2]).toFixed(6)}</td></tr>`;
-                }
-            }
+        // Buy orders (bids, descending)
+        buyOrders.innerHTML = '<tr><td>Cumulative</td><td>Volume</td><td>Price</td></tr>';
+        let cum = 0;
+        for (let i = 0; i < metaNode.book.bidp.length; i++) {
+            cum += metaNode.book.bidv[i];
+            buyOrders.innerHTML += '<tr><td>' + cum.toFixed(6) + '</td>'
+                + '<td>' + metaNode.book.bidv[i].toFixed(6) + '</td>'
+                + '<td>' + parseFloat(metaNode.book.bidp[i]).toFixed(8) + '</td></tr>';
         }
+
+        // Sell orders (asks, ascending)
+        sellOrders.innerHTML = '<tr><td>Price</td><td>Volume</td><td>Cumulative</td></tr>';
+        cum = 0;
+        for (let i = 0; i < metaNode.book.askp.length; i++) {
+            sellOrders.innerHTML += '<tr><td>' + parseFloat(metaNode.book.askp[i]).toFixed(8) + '</td>'
+                + '<td>' + metaNode.book.askv[i].toFixed(6) + '</td>';
+            cum += metaNode.book.askv[i];
+            sellOrders.innerHTML += '<td>' + cum.toFixed(6) + '</td></tr>';
+        }
+
+        // Open orders
+        openOrders.innerHTML = '<tr><td>Type</td><td>Price</td><td>Volume</td></tr>';
+        for (let i = 0; i < metaNode.orders.length; i++) {
+            const o = metaNode.orders[i];
+            openOrders.innerHTML += '<tr><td>' + o.orderType + '</td>'
+                + '<td>' + parseFloat(o.price).toFixed(6) + '</td>'
+                + '<td>' + parseFloat(o.amount).toFixed(8) + '</td></tr>';
+        }
+
+        // Fill history
+        fillOrders.innerHTML = '<tr><td>Time</td><td>Price</td><td>Volume</td></tr>';
+        for (let i = 0; i < metaNode.history.length; i++) {
+            const h = metaNode.history[i];
+            fillOrders.innerHTML += '<tr><td>' + new Date(h[0] * 1000).toLocaleString() + '</td>'
+                + '<td>' + parseFloat(h[1]).toFixed(8) + '</td>'
+                + '<td>' + parseFloat(h[2]).toFixed(6) + '</td></tr>';
+        }
+
+        // Balance display
+        balAssets.textContent    = metaNode.asset_balance.toFixed(cache.asset_precision || 5);
+        balCurrency.textContent  = metaNode.currency_balance.toFixed(cache.currency_precision || 8);
+        balBts.textContent       = metaNode.bts_balance.toFixed(5);
+        balBuyOrders.textContent = metaNode.buy_orders;
+        balSellOrders.textContent= metaNode.sell_orders;
+        balMax.textContent       = metaNode.asset_max.toFixed(cache.asset_precision || 5);
     }
     setTimeout(updateOrders, 1000);
 }
 
-updateOrders();
+/* ------------------------------------------------------------------ */
+/*  6.  Init                                                          */
+/* ------------------------------------------------------------------ */
+(async function init() {
+    // Create pool
+    pool = new GrapheneRPCPool({
+        maxRetries:      3,
+        timeoutMs:       5000,
+        failoverDelay:   1000,
+        failoverDebounceMs: 8000
+    });
 
-function animateScroll() {
-    offset -= 1.5; // Adjust speed as needed
-    if (offset < -nodesWidth) {
-        offset = 0;
+    const settings = loadSettings();
+    const hasUserSaved = localStorage.getItem(STORAGE_KEY) !== null;
+    updateSettingsButton(hasUserSaved);
+    fillSettingsForm(settings);
+
+    // Connect pool, then bootstrap
+    try {
+        poolStatus.textContent = 'Connecting to pool...';
+        await pool.getActiveInstance();
+        poolStatus.textContent = 'Connected! Bootstrapping...';
+        await bootstrap(settings);
+        updateNodeScroll();
+    } catch (e) {
+        poolStatus.className = 'red';
+        poolStatus.textContent = 'Pool connection failed: ' + e.message;
+        console.error('Pool connection error:', e);
     }
-    nodeSpan.style.transform = `translateX(${offset}px)`;
-    requestAnimationFrame(animateScroll);
-}
 
-requestAnimationFrame(animateScroll);
+    // Start DOM loops
+    clock();
+    updateOrders();
+})();
