@@ -41,6 +41,18 @@ function esc(s) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  0a. Smart number formatting — strip trailing zeros, keep at least */
+/*      one decimal so 1.000000 → "1.0" but 1.619374 → "1.619374"     */
+/* ------------------------------------------------------------------ */
+function fmt(n, decimals) {
+    if (decimals === undefined) decimals = 6;
+    if (n == null || isNaN(n)) return '--';
+    const s = Number(n).toFixed(decimals);
+    const stripped = parseFloat(s).toString();
+    return stripped.indexOf('.') >= 0 ? stripped : stripped + '.0';
+}
+
+/* ------------------------------------------------------------------ */
 /*  0.  Default configuration (matches the old metaNODE.py defaults)  */
 /* ------------------------------------------------------------------ */
 const DEFAULTS = {
@@ -418,8 +430,8 @@ function clock() {
     if (metaNode.ping) {
         clockSpan.innerHTML = 'Blocktime: ' + new Date(metaNode.blocktime * 1000).toLocaleString();
         latencySpan.innerHTML = (
-            'PING ' + metaNode.ping.toFixed(2) +
-            ' \u2022 LATENCY ' + Math.max(0, (Date.now()/1000) - metaNode.blocktime).toFixed(2)
+            'PING ' + fmt(metaNode.ping, 2) +
+            ' \u2022 LATENCY ' + fmt(Math.max(0, (Date.now()/1000) - metaNode.blocktime), 2)
         );
     }
     setTimeout(clock, 1000);
@@ -433,19 +445,19 @@ function updateOrders() {
         let cum = 0;
         for (let i = 0; i < metaNode.book.bidp.length; i++) {
             cum += metaNode.book.bidv[i];
-            buyOrders.innerHTML += '<tr><td>' + cum.toFixed(6) + '</td>'
-                + '<td>' + metaNode.book.bidv[i].toFixed(6) + '</td>'
-                + '<td>' + metaNode.book.bidp[i].toFixed(8) + '</td></tr>';
+            buyOrders.innerHTML += '<tr><td>' + fmt(cum) + '</td>'
+                + '<td>' + fmt(metaNode.book.bidv[i]) + '</td>'
+                + '<td>' + fmt(metaNode.book.bidp[i], 8) + '</td></tr>';
         }
 
         // Sell orders (asks, ascending)
         sellOrders.innerHTML = '<tr><td>Price</td><td>Volume</td><td>Cumulative</td></tr>';
         cum = 0;
         for (let i = 0; i < metaNode.book.askp.length; i++) {
-            sellOrders.innerHTML += '<tr><td>' + metaNode.book.askp[i].toFixed(8) + '</td>'
-                + '<td>' + metaNode.book.askv[i].toFixed(6) + '</td>';
+            sellOrders.innerHTML += '<tr><td>' + fmt(metaNode.book.askp[i], 8) + '</td>'
+                + '<td>' + fmt(metaNode.book.askv[i]) + '</td>';
             cum += metaNode.book.askv[i];
-            sellOrders.innerHTML += '<td>' + cum.toFixed(6) + '</td></tr>';
+            sellOrders.innerHTML += '<td>' + fmt(cum) + '</td></tr>';
         }
 
         // Open orders
@@ -453,8 +465,8 @@ function updateOrders() {
         for (let i = 0; i < metaNode.orders.length; i++) {
             const o = metaNode.orders[i];
             openOrders.innerHTML += '<tr><td>' + o.orderType + '</td>'
-                + '<td>' + parseFloat(o.price).toFixed(6) + '</td>'
-                + '<td>' + parseFloat(o.amount).toFixed(8) + '</td></tr>';
+                + '<td>' + fmt(o.price, 8) + '</td>'
+                + '<td>' + fmt(o.amount) + '</td></tr>';
         }
 
         // Fill history
@@ -462,8 +474,8 @@ function updateOrders() {
         for (let i = 0; i < metaNode.history.length; i++) {
             const h = metaNode.history[i];
             fillOrders.innerHTML += '<tr><td>' + new Date(h[0] * 1000).toLocaleString() + '</td>'
-                + '<td>' + parseFloat(h[1]).toFixed(8) + '</td>'
-                + '<td>' + parseFloat(h[2]).toFixed(6) + '</td></tr>';
+                + '<td>' + fmt(h[1], 8) + '</td>'
+                + '<td>' + fmt(h[2]) + '</td></tr>';
         }
 
         // Balance labels
@@ -474,12 +486,12 @@ function updateOrders() {
         if (lblSell)      lblSell.textContent      = 'SELL';
 
         // Balance display
-        balAssets.textContent    = metaNode.asset_balance.toFixed(cache.asset_precision || 5);
-        balCurrency.textContent  = metaNode.currency_balance.toFixed(cache.currency_precision || 8);
-        balBts.textContent       = metaNode.bts_balance.toFixed(5);
-        balBuyOrders.textContent = metaNode.buy_orders;
-        balSellOrders.textContent= metaNode.sell_orders;
-        balMax.textContent       = metaNode.asset_max.toFixed(cache.asset_precision || 5);
+        balAssets.textContent    = fmt(metaNode.asset_balance, cache.asset_precision || 5);
+        balCurrency.textContent  = fmt(metaNode.currency_balance, cache.currency_precision || 8);
+        balBts.textContent       = fmt(metaNode.bts_balance, 5);
+        balBuyOrders.textContent = fmt(metaNode.buy_orders, cache.currency_precision || 8);
+        balSellOrders.textContent= fmt(metaNode.sell_orders, cache.asset_precision || 5);
+        balMax.textContent       = fmt(metaNode.asset_max, cache.asset_precision || 5);
     }
     setTimeout(updateOrders, 1000);
 }
