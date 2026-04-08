@@ -348,6 +348,15 @@ class GrapheneRPC {
             ids.push("1.3.0");
             precs.push(5);
         }
+        // Guard against undefined IDs (cache not fully resolved)
+        for (const id of ids) {
+            if (id === undefined || id === null) {
+                throw new Error("rpcAccountBalances: undefined asset ID in cache");
+            }
+        }
+        if (!cache.account_name) {
+            throw new Error("rpcAccountBalances: account_name is not set");
+        }
         const ret = await this.query("database", ["get_named_account_balances", [cache.account_name, ids]]);
         const balances = Object.fromEntries(ids.map(id => [id, 0]));
         for (let i = 0; i < ids.length; i++) {

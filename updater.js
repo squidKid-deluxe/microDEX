@@ -184,8 +184,12 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 async function tick() {
     try {
+        // Guard: skip if cache IDs haven't been resolved yet (bootstrap incomplete or failed)
+        if (!cache.asset_id || !cache.currency_id || !cache.account_id) return;
+
         const now  = Math.floor(Date.now() / 1000);
         const then = now - 3 * 86400;   // 3 days of history
+        const toIso = (ts) => new Date(ts * 1000).toISOString().replace('.000Z', '');
 
         // -- block latency / ping --
         let ping = metaNode.ping || 0.5;
@@ -205,13 +209,18 @@ async function tick() {
         let book = metaNode.book;
         try {
             const [askp, bidp, askv, bidv] = await pool.rpcBook(cache);
-            book = { askp, bidp, askv, bidv };
+            book = {
+                askp: askp.map(parseFloat),
+                bidp: bidp.map(parseFloat),
+                askv: askv.map(parseFloat),
+                bidv: bidv.map(parseFloat)
+            };
         } catch (_) {}
 
         // -- trade history --
         let history = metaNode.history;
         try {
-            history = await pool.rpcMarketHistory(cache, now.toString(), then.toString());
+            history = await pool.rpcMarketHistory(cache, toIso(now), toIso(then));
         } catch (_) {}
 
         // -- open orders --
@@ -355,14 +364,14 @@ function updateOrders() {
             cum += metaNode.book.bidv[i];
             buyOrders.innerHTML += '<tr><td>' + cum.toFixed(6) + '</td>'
                 + '<td>' + metaNode.book.bidv[i].toFixed(6) + '</td>'
-                + '<td>' + parseFloat(metaNode.book.bidp[i]).toFixed(8) + '</td></tr>';
+                + '<td>' + metaNode.book.bidp[i].toFixed(8) + '</td></tr>';
         }
 
         // Sell orders (asks, ascending)
         sellOrders.innerHTML = '<tr><td>Price</td><td>Volume</td><td>Cumulative</td></tr>';
         cum = 0;
         for (let i = 0; i < metaNode.book.askp.length; i++) {
-            sellOrders.innerHTML += '<tr><td>' + parseFloat(metaNode.book.askp[i]).toFixed(8) + '</td>'
+            sellOrders.innerHTML += '<tr><td>' + metaNode.book.askp[i].toFixed(8) + '</td>'
                 + '<td>' + metaNode.book.askv[i].toFixed(6) + '</td>';
             cum += metaNode.book.askv[i];
             sellOrders.innerHTML += '<td>' + cum.toFixed(6) + '</td></tr>';
