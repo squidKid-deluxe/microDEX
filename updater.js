@@ -384,6 +384,12 @@ const balBuyOrders = document.getElementById('bal-buy-orders');
 const balSellOrders= document.getElementById('bal-sell-orders');
 const balMax       = document.getElementById('bal-max');
 
+const lblAssets    = document.getElementById('lbl-assets');
+const lblCurrency  = document.getElementById('lbl-currency');
+const lblBts       = document.getElementById('lbl-bts');
+const lblBuy       = document.getElementById('lbl-buy');
+const lblSell      = document.getElementById('lbl-sell');
+
 // --- Scrolling node list (updated from pool status) ---
 let nodesWidth = 0;
 let offset = 0;
@@ -459,6 +465,13 @@ function updateOrders() {
                 + '<td>' + parseFloat(h[1]).toFixed(8) + '</td>'
                 + '<td>' + parseFloat(h[2]).toFixed(6) + '</td></tr>';
         }
+
+        // Balance labels
+        if (lblAssets)    lblAssets.textContent    = cache.asset || 'ASSETS';
+        if (lblCurrency)  lblCurrency.textContent  = cache.currency || 'CURRENCY';
+        if (lblBts)       lblBts.textContent       = 'BTS';
+        if (lblBuy)       lblBuy.textContent       = 'BUY';
+        if (lblSell)      lblSell.textContent      = 'SELL';
 
         // Balance display
         balAssets.textContent    = metaNode.asset_balance.toFixed(cache.asset_precision || 5);
