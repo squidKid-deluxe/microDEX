@@ -5,6 +5,42 @@
 // ============================================================
 
 /* ------------------------------------------------------------------ */
+/*  0b. Diagnostic debug panel                                        */
+/* ------------------------------------------------------------------ */
+const debugToggle = document.getElementById('debug-toggle');
+const debugPanel  = document.getElementById('debug-panel');
+const debugLines  = [];
+const MAX_DEBUG   = 80;
+
+if (debugToggle) {
+    debugToggle.addEventListener('click', () => {
+        debugPanel.classList.toggle('visible');
+    });
+}
+
+function dlog(cls, msg) {
+    const line = { cls, msg, t: new Date().toLocaleTimeString() };
+    debugLines.push(line);
+    if (debugLines.length > MAX_DEBUG) debugLines.shift();
+    if (debugPanel && debugPanel.classList.contains('visible')) {
+        renderDebug();
+    }
+}
+
+function renderDebug() {
+    if (!debugPanel) return;
+    debugPanel.innerHTML = debugLines.map(l =>
+        '<span class="' + l.cls + '">[' + l.t + ']</span> ' +
+        '<span class="' + l.cls + '">' + esc(l.msg) + '</span>'
+    ).join('\n') + '\n';
+    debugPanel.scrollTop = debugPanel.scrollHeight;
+}
+
+function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+}
+
+/* ------------------------------------------------------------------ */
 /*  0.  Default configuration (matches the old metaNODE.py defaults)  */
 /* ------------------------------------------------------------------ */
 const DEFAULTS = {
@@ -101,17 +137,22 @@ async function bootstrap(settings) {
 
     poolStatus.className = 'yellow';
     poolStatus.textContent = 'Resolving account & asset IDs...';
+    dlog('info', 'Bootstrap: account=' + settings.account + ' currency=' + settings.currency + ' asset=' + settings.asset);
 
     try {
         // Resolve asset symbols → ids + precisions
+        dlog('info', 'Calling rpcLookupAssetSymbols...');
         const symbols = await pool.rpcLookupAssetSymbols(cache);
+        dlog('ok', 'Asset symbols: ' + JSON.stringify(symbols));
         cache.asset_id          = symbols[0].id;
         cache.asset_precision   = symbols[0].precision;
         cache.currency_id       = symbols[1].id;
         cache.currency_precision= symbols[1].precision;
 
         // Resolve account name → account id
+        dlog('info', 'Calling rpcLookupAccounts...');
         cache.account_id = await pool.rpcLookupAccounts(cache);
+        dlog('ok', 'Account ID: ' + cache.account_id);
 
         // Populate metaNode skeleton so DOM functions don't crash
         metaNode.account_name   = cache.account_name;
@@ -185,7 +226,14 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 async function tick() {
     try {
         // Guard: skip if cache IDs haven't been resolved yet (bootstrap incomplete or failed)
-        if (!cache.asset_id || !cache.currency_id || !cache.account_id) return;
+        if (!cache.asset_id || !cache.currency_id || !cache.account_id) {
+            dlog('warn', 'Tick skipped — cache IDs not resolved: ' + JSON.stringify({
+                asset_id: cache.asset_id,
+                currency_id: cache.currency_id,
+                account_id: cache.account_id
+            }));
+            return;
+        }
 
         const now  = Math.floor(Date.now() / 1000);
         const then = now - 3 * 86400;   // 3 days of history
@@ -196,14 +244,17 @@ async function tick() {
         let blocktime = now;
         try {
             const bl = await pool.rpcBlockLatency({ mean_ping: ping });
-            // bl = [latency, max, blocktime]
             blocktime = bl[2];
             ping = Math.min(1, (19 * ping + bl[0]) / 20);
-        } catch (_) { /* keep old ping */ }
+            dlog('ok', 'Ping: ' + bl[0].toFixed(3) + 's  Block: ' + blocktime);
+        } catch (e) { dlog('warn', 'Block latency failed: ' + e.message); }
 
         // -- last price --
         let last = metaNode.last || 0;
-        try { last = parseFloat(await pool.rpcLast(cache)); } catch (_) {}
+        try {
+            last = parseFloat(await pool.rpcLast(cache));
+            dlog('ok', 'Last price: ' + last);
+        } catch (e) { dlog('warn', 'rpcLast failed: ' + e.message); }
 
         // -- order book --
         let book = metaNode.book;
@@ -215,19 +266,22 @@ async function tick() {
                 askv: askv.map(parseFloat),
                 bidv: bidv.map(parseFloat)
             };
-        } catch (_) {}
+            dlog('ok', 'Book: ' + bidp.length + ' bids, ' + askp.length + ' asks');
+        } catch (e) { dlog('warn', 'rpcBook failed: ' + e.message); }
 
         // -- trade history --
         let history = metaNode.history;
         try {
             history = await pool.rpcMarketHistory(cache, toIso(now), toIso(then));
-        } catch (_) {}
+            dlog('ok', 'History: ' + history.length + ' entries');
+        } catch (e) { dlog('warn', 'rpcMarketHistory failed: ' + e.message); }
 
         // -- open orders --
         let orders = metaNode.orders;
         try {
             orders = await pool.rpcOpenOrders(cache);
-        } catch (_) {}
+            dlog('ok', 'Open orders: ' + orders.length);
+        } catch (e) { dlog('warn', 'rpcOpenOrders failed: ' + e.message); }
 
         // -- balances --
         let bts_balance = metaNode.bts_balance || 0;
@@ -240,7 +294,8 @@ async function tick() {
             bts_balance    = bals['1.3.0']    || 0;
             asset_balance  = bals[cache.asset_id]  || 0;
             currency_balance = bals[cache.currency_id] || 0;
-        } catch (_) {}
+            dlog('ok', 'Balances: BTS=' + bts_balance.toFixed(2) + ' ' + cache.asset + '=' + asset_balance);
+        } catch (e) { dlog('warn', 'rpcAccountBalances failed: ' + e.message); }
 
         // -- computed fields (same logic as metaNODE.py bifurcation) --
         let buy_orders = 0, sell_orders = 0;
@@ -410,6 +465,8 @@ function updateOrders() {
 /*  6.  Init                                                          */
 /* ------------------------------------------------------------------ */
 (async function init() {
+    dlog('info', 'microDEX client-only init');
+
     // Create pool
     pool = new GrapheneRPCPool({
         maxRetries:      3,
@@ -422,17 +479,22 @@ function updateOrders() {
     const hasUserSaved = localStorage.getItem(STORAGE_KEY) !== null;
     updateSettingsButton(hasUserSaved);
     fillSettingsForm(settings);
+    dlog('info', 'Settings loaded: ' + JSON.stringify(settings) + ' (saved=' + hasUserSaved + ')');
 
     // Connect pool, then bootstrap
     try {
         poolStatus.textContent = 'Connecting to pool...';
+        dlog('info', 'Connecting pool...');
         await pool.getActiveInstance();
+        dlog('ok', 'Pool connected. Node: ' + pool.activeInstance.url);
         poolStatus.textContent = 'Connected! Bootstrapping...';
         await bootstrap(settings);
+        dlog('ok', 'Bootstrap complete. Starting poll loop.');
         updateNodeScroll();
     } catch (e) {
         poolStatus.className = 'red';
         poolStatus.textContent = 'Pool connection failed: ' + e.message;
+        dlog('err', 'Pool connection failed: ' + e.message);
         console.error('Pool connection error:', e);
     }
 

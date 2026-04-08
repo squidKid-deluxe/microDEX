@@ -88,6 +88,48 @@
             padding: 2px;
         }
 
+        /* Debug panel */
+        #debug-toggle {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            z-index: 100;
+            background: #111;
+            border: 1px solid #333;
+            color: #666;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 0.6rem;
+            font-family: 'Courier New', Courier, monospace;
+            border-radius: 4px;
+        }
+        #debug-panel {
+            display: none;
+            position: fixed;
+            bottom: 40px;
+            right: 10px;
+            z-index: 100;
+            background: #0a0a0a;
+            border: 1px solid #444;
+            padding: 12px;
+            border-radius: 6px;
+            width: 380px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 0.65rem;
+            color: #999;
+            font-family: 'Courier New', Courier, monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        #debug-panel.visible {
+            display: block;
+        }
+        #debug-panel .ok { color: #2c2; }
+        #debug-panel .err { color: #c33; }
+        #debug-panel .warn { color: #cc2; }
+        #debug-panel .info { color: #29c; }
+
         /* Balance spans */
         .footer div span {
             font-weight: bold;
@@ -194,6 +236,10 @@
             <span><em>ORDERS TAKE A FEW SECONDS TO APPEAR; CLICK ONCE, THEN CONFIRM</em></span>
         </div>
     </div>
+
+    <!-- Debug panel -->
+    <button id="debug-toggle" title="Show diagnostic data">DEBUG</button>
+    <div id="debug-panel"></div>
     <script type="text/javascript" src="signing.js"></script>
     <script type="text/javascript" src="callbacks.js"></script>
     <script type="text/javascript" src="updater.js"></script>
