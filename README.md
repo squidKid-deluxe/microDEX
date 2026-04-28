@@ -56,13 +56,13 @@ No frameworks. No bloat. No dependencies. Pure performance.
 ## Quick Start
 
 ### Option 1: Open Directly
-Simply open `microDEX.html` in your browser. Chrome, Firefox, and Safari all work.
+Simply open `index.html` in your browser. Chrome, Firefox, and Safari all work.
 
 ### Option 2: Serve Locally
 ```bash
 python3 -m http.server 8080
 ```
-Then visit `http://localhost:8080/microDEX.html`
+Then visit `http://localhost:8080/index.html`
 
 > **No installation required.** No `pip install`, no `npm install`, no dependencies to download.
 
@@ -109,7 +109,7 @@ You can customize this list in `graphene-rpc.js` in the `defaultNodes` array.
 
 ```
 /workspace/
-├── microDEX.html          # Main SPA (Single Page Application)
+├── index.html          # Main SPA (Single Page Application)
 ├── graphene-rpc.js        # WebSocket client + multi-node pool with failover
 ├── updater.js             # Data polling, settings UI, DOM updates
 ├── signing.js             # Wallet & transaction operations
