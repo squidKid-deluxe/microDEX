@@ -1,6 +1,6 @@
-# microDEX - Minimalist BitShares UI 1.0.0
+# microDEX - Minimalist BitShares UI
 
-> A dependency-free, real-time trading interface for the BitShares blockchain - built with vanilla HTML, CSS, and JavaScript. No React. No Vue. No Tailwind. Just raw data, fast.
+> A dependency-free, real-time trading interface for the BitShares blockchain - built with vanilla HTML, CSS, and JavaScript. No React. No Vue. No Tailwind. No Python. Just raw data, fast.
 
 ![microDEX Screenshot](screenshot.png)
 
@@ -8,7 +8,7 @@
 
 ## What Is microDEX?
 
-**microDEX** is a lightweight, minimalist web-based trading interface for the [BitShares](https://bitshares.org) blockchain. It streams live order book, fill history, and account data directly from multiple public BitShares nodes using **litepresence's metaNODE** backend, then pushes updates to your browser via a custom **ASGI WebSocket pipeline**.
+**microDEX** is a lightweight, minimalist web-based trading interface for the [BitShares](https://bitshares.org) blockchain. It connects directly to multiple public BitShares nodes from your browser via WebSocket, streams live order book and fill history data, and lets you trade - all without a backend server.
 
 No frameworks. No bloat. No dependencies. Pure performance.
 
@@ -16,14 +16,16 @@ No frameworks. No bloat. No dependencies. Pure performance.
 
 ## Features
 
-- Realtime Order Book (Buy & Sell)
-- Live Fill History
-- Open Orders Tracker
+- Realtime Order Book (Buy & Sell) with cumulative volume
+- Live Fill History (recent trades)
+- Open Orders Tracker with cancel support
 - Buy/Sell Interface with Wallet Lock/Unlock
-- Multi-Node Latency & Health Monitoring
-- Vanilla HTML/CSS/JS - Zero External Libraries
-- ASGI WebSocket Backend for Low-Latency Streaming
-- Built on litepresence's metaNODE for Reliable Blockchain Data
+- Multi-Node Pool with automatic failover (15+ nodes)
+- Node Health Monitoring (ping, latency, status)
+- Settings UI - configurable trading pair, account, and assets
+- Vanilla HTML/CSS/JS - Zero External Libraries (except bitsharesjs for crypto)
+- Client-Side Only - No backend, no Python, no server required
+- Dark Theme with terminal-style layout
 
 ---
 
@@ -38,78 +40,92 @@ No frameworks. No bloat. No dependencies. Pure performance.
 | **Fill Orders**     | Timestamp, Price, Volume of recent fills                                   |
 | **Wallet Status**   | Locked/Unlocked state + WIF input field                                    |
 | **Trade Controls**  | Buy/Sell price & amount fields + "BUY", "SELL", "CANCEL ALL" buttons       |
+| **Settings**        | Trading pair, account name, asset configuration                            |
 
 ---
 
 ## How It Works
 
-1. **Backend**: The `metaNODE` connects to multiple BitShares API nodes, aggregates data, and pushes it via ASGI WebSockets.
-2. **Frontend**: Vanilla JS listens to WebSocket events and dynamically updates the DOM - no virtual DOM, no reactivity engine.
-3. **UI**: Hand-coded CSS with dark theme, monospace fonts, and terminal-style layout for clarity and speed.
+1. **Node Pool**: `graphene-rpc.js` manages a pool of 15+ BitShares nodes with automatic failover and health tracking via WebSocket connections.
+2. **Data Polling**: `updater.js` polls the node pool every 2.5 seconds for order book, history, balances, and account data.
+3. **Wallet & Trading**: `signing.js` handles WIF key management and transaction signing using `bitsharesjs.min.js` - all client-side.
+4. **UI**: Vanilla JS dynamically updates the DOM - no virtual DOM, no reactivity engine.
 
 ---
 
-## 🛠️ Setup & Run
+## Quick Start
 
-### Prerequisites
+### Option 1: Open Directly
+Simply open `microDEX.html` in your browser. Chrome, Firefox, and Safari all work.
 
-- Python 3.8+  (preferably in a virtual environment)
-
-### Installation
-
+### Option 2: Serve Locally
 ```bash
-git clone https://github.com/squidKid-deluxe/microDEX.git
-cd microDEX
-pip install -r requirements.txt
+python3 -m http.server 8080
 ```
+Then visit `http://localhost:8080/microDEX.html`
 
-### Start Backend
-
-```bash
-python serve_metanode.py
-```
-
-Then open `microDEX.html` in your browser; I tested with Firefox, but it should work on Chrome and Safari too.
-
-> *Note: If you do not run the ASGI backend first, you will have to refresh the web page so the frontend can connect to the WebSocket.*
+> **No installation required.** No `pip install`, no `npm install`, no dependencies to download.
 
 ---
 
 ## Wallet & Trading
 
-- **WIF Input**: Enter your private key (WIF format) to unlock wallet.  This never leaves your browser, and is only ever handled client-side.
-- **Lock/Unlock**: Toggle wallet state safely.  Once locked, your WIF is deleted from memory as well as JavaScript allows.
+- **WIF Input**: Enter your private key (WIF format) to unlock wallet. This never leaves your browser - all signing happens client-side.
+- **Lock/Unlock**: Toggle wallet state safely. Once locked, your WIF is deleted from memory after 5 minutes.
 - **Place Orders**: Enter price and amount → Click "BUY" or "SELL".
 - **Cancel All**: Cancel all open orders at once.
+- **Settings**: Click the settings button to configure trading pair, account name, and assets. Settings are saved in localStorage.
 - ⚠️ **Orders take a few seconds to appear - click once, then confirm.**
 
 ---
 
-## Nodes in Use (as shown in UI)
+## Nodes in Use
 
-The app currently connects to these public BitShares API endpoints:
+The app connects to these public BitShares API endpoints with automatic failover:
 
 ```
-api.bts.mobi/wss
-api.61bts.com/ws
-api.dex.trading/ws
-api.btslebin.com/ws
-bitsharesapi.loclx.io
-cloud.xbts.io/ws
-node.xbts.io/wss
-public.xbts.io/ws
-dex.iobanker.com/ws
-eu.nodes.bitshares.ws/ws
-btsws.roelandp.nl/ws
+wss://api.bts.mobi/wss
+wss://api.61bts.com/ws
+wss://api.dex.trading/ws
+wss://api.btslebin.com/ws
+wss://bitsharesapi.loclx.io
+wss://cloud.xbts.io/ws
+wss://node.xbts.io/wss
+wss://public.xbts.io/ws
+wss://dex.iobanker.com/ws
+wss://eu.nodes.bitshares.ws/ws
+wss://btsws.roelandp.nl/ws
+wss://api.bitshares.dev/wss
+wss://newyork.bitshares.im/wss
+wss://asia.nodes.bitshares.ws/wss
+wss://bts.open.icowallet.net/ws
 ```
 
-You can customize this list in `metaNODE.py`, in the `public_nodes` function.
+You can customize this list in `graphene-rpc.js` in the `defaultNodes` array.
+
+---
+
+## Project Structure
+
+```
+/workspace/
+├── microDEX.html          # Main SPA (Single Page Application)
+├── graphene-rpc.js        # WebSocket client + multi-node pool with failover
+├── updater.js             # Data polling, settings UI, DOM updates
+├── signing.js             # Wallet & transaction operations
+├── callbacks.js           # UI event handlers (buy/sell/cancel)
+├── bitsharesjs.min.js     # BitShares crypto library (minified)
+├── main.css               # Dark theme, terminal-style layout
+├── buttons.css            # Button styles (buy/sell/cancel)
+├── favicon.png            # Site icon
+└── screenshot.png         # UI screenshot
+```
 
 ---
 
 ## Why No Frameworks?
 
-Dependencies.  The bitshares reference UI is an amazing piece of software, but it has to be run with React 16, six whole major versions how out date.  My goal with this project, and others like the [DEX UX](https://github.com/squidKid-deluxe/bitshares-dex-ux), is to create software that depends on basics, without having to keep up with version cycles.  Using Python is bad enough, I remember 5 years ago python2.7 was not that old - now it's officially past support, and while it still works, even installing it on modern systems is difficult.  Vanilla JavaScript hasn't fundamentally changed for 30 years - *that* is stable.
+Dependencies. The BitShares reference UI is amazing, but it's tied to React 16 - six major versions out of date. My goal with this project is to create software that depends on basics, without having to keep up with version cycles. Vanilla JavaScript hasn't fundamentally changed for 30 years - *that* is stable.
 
 ---
 
@@ -121,12 +137,12 @@ PRs welcome! Much of this app is still up in the air, but feel free to contribut
 
 ## License
 
-WTFPL - Do what you want.  It's open source, after all.
+WTFPL - Do what you want. It's open source, after all.
 
 ---
 
 ## Credits
 
-- Built using the [metaNODE](https://github.com/litepresence/extinction-event/blob/master/EV/metaNODE.py) from litepresence's extinction-event.
+- Uses `bitsharesjs` for cryptographic operations and transaction signing
 - Inspired by the ethos of minimalism and decentralization
 - For the BitShares community - keep building!
