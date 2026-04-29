@@ -540,6 +540,50 @@ class GrapheneRPC {
         if (parseFloat(last) === 0) throw new Error("zero price last");
         return last;
     }
+
+    /**
+     * Retrieves recent filled orders for the configured account in the current market.
+     * Uses: cache.account_id, cache.asset_id, cache.currency_id, cache.asset_precision, cache.currency_precision, cache.asset, cache.currency
+     */
+    async rpcAccountFills(cache, limit = 100) {
+        const ret = await this.query("history", ["get_fill_order_history", [cache.asset_id, cache.currency_id, limit]]);
+        if (!ret || ret.length === 0) return [];
+
+        const fills = [];
+        for (const fill of ret) {
+            if (fill.op.account_id !== cache.account_id) continue;
+
+            const paysId   = fill.op.pays.asset_id;
+            const paysAmt  = parseFloat(fill.op.pays.amount);
+            const recvId   = fill.op.receives.asset_id;
+            const recvAmt  = parseFloat(fill.op.receives.amount);
+
+            const timeStr = fill.time || fill["time.time"] || "";
+            const isoTime = timeStr.replace(" ", "T");
+            const unix = Math.floor(new Date(isoTime + "Z").getTime() / 1000);
+            if (isNaN(unix) || unix === 0) continue;
+
+            const isSell = paysId === cache.asset_id;
+            const isBuy  = paysId === cache.currency_id;
+
+            if (isSell) {
+                const basePrecision = cache.asset_precision;
+                const quotePrecision = cache.currency_precision;
+                const pays  = paysAmt  / Math.pow(10, basePrecision);
+                const recv  = recvAmt  / Math.pow(10, quotePrecision);
+                const price = recv / pays;
+                fills.push([unix, this.precision(price, 16), this.precision(pays, cache.asset_precision)]);
+            } else if (isBuy) {
+                const basePrecision = cache.currency_precision;
+                const quotePrecision = cache.asset_precision;
+                const pays  = paysAmt  / Math.pow(10, basePrecision);
+                const recv  = recvAmt  / Math.pow(10, quotePrecision);
+                const price = pays / recv;
+                fills.push([unix, this.precision(price, 16), this.precision(recv, cache.asset_precision)]);
+            }
+        }
+        return fills;
+    }
 }
 
 /*

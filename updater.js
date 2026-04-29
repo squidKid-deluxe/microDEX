@@ -191,9 +191,16 @@ cfgSync.addEventListener('click', async () => {
         }
 
         cfgAccount.value = result.account.name;
-        metaNode.account_name = result.account.name;
-
+        updateWalletStatus('Connected: ' + result.account.name, 'green');
         dlog('ok', 'Account synced from extension: ' + result.account.name);
+
+        poolStatus.className = 'yellow';
+        poolStatus.textContent = 'Reconnecting with new account...';
+        const s = readSettingsForm();
+        s.account = result.account.name;
+        saveSettings(s);
+        updateSettingsButton(true);
+        await bootstrap(s);
     } catch (err) {
         alert('Sync failed: ' + err.message);
     }
@@ -207,16 +214,22 @@ function updateWalletStatus(text, color) {
 }
 
 // Listen for wallet events from the extension
-window.addEventListener('message', (e) => {
+window.addEventListener('message', async (e) => {
     if (e.source !== window) return;
     if (e.data?.type !== 'BITSHARES_WALLET_EVENT') return;
 
     const { event, data } = e.data;
     if (event === 'accountChanged' && data) {
-        metaNode.account_name = data.name;
-        metaNode.account_id = data.id;
         updateWalletStatus('Connected: ' + data.name, 'green');
         dlog('info', 'Account changed to: ' + data.name);
+
+        poolStatus.className = 'yellow';
+        poolStatus.textContent = 'Reconnecting with new account...';
+        const s = readSettingsForm();
+        s.account = data.name;
+        saveSettings(s);
+        cfgAccount.value = data.name;
+        await bootstrap(s);
     } else if (event === 'locked') {
         updateWalletStatus('Wallet locked', 'yellow');
         dlog('warn', 'Wallet locked');
@@ -267,6 +280,7 @@ async function bootstrap(settings) {
         metaNode.pair           = cache.asset + ':' + cache.currency;
         metaNode.book           = { bidp: [], bidv: [], askp: [], askv: [] };
         metaNode.history        = [];
+        metaNode.fills          = [];
         metaNode.orders         = [];
         metaNode.ping           = 0;
         metaNode.blocktime      = 0;
@@ -374,6 +388,13 @@ async function tick() {
             dlog('ok', 'Open orders: ' + orders.length);
         } catch (e) { dlog('warn', 'rpcOpenOrders failed: ' + e.message); }
 
+        // -- account fill history --
+        let fills = metaNode.fills;
+        try {
+            fills = await pool.rpcAccountFills(cache);
+            dlog('ok', 'Fills: ' + fills.length + ' entries');
+        } catch (e) { dlog('warn', 'rpcAccountFills failed: ' + e.message); }
+
         // -- balances --
         let bts_balance = metaNode.bts_balance || 0;
         let asset_balance = metaNode.asset_balance || 0;
@@ -410,6 +431,7 @@ async function tick() {
         metaNode.last            = last;
         metaNode.book            = book;
         metaNode.history         = history;
+        metaNode.fills           = fills;
         metaNode.orders          = orders;
         metaNode.bts_balance     = bts_balance;
         metaNode.asset_balance   = asset_balance;
@@ -499,7 +521,7 @@ function updateNodeScroll() {
 
 function animateScroll() {
     scrollOffset -= 1.5;
-    if (scrollOffset < -halfWidth) scrollOffset = 0;  // seamless reset
+    if (scrollOffset < -halfWidth/2) scrollOffset = 0;  // seamless reset
     nodeSpan.style.transform = 'translateX(' + scrollOffset + 'px)';
     requestAnimationFrame(animateScroll);
 }
@@ -549,11 +571,11 @@ function updateOrders() {
         openOrders.innerHTML = html;
 
         html = '<tr><td>Time</td><td>Price</td><td>Volume</td></tr>';
-        for (let i = 0; i < metaNode.history.length; i++) {
-            const h = metaNode.history[i];
-            html += '<tr><td>' + new Date(h[0] * 1000).toLocaleString() + '</td>'
-                + '<td>' + fmt(h[1], 8) + '</td>'
-                + '<td>' + fmt(h[2]) + '</td></tr>';
+        for (let i = 0; i < metaNode.fills.length; i++) {
+            const f = metaNode.fills[i];
+            html += '<tr><td>' + new Date(f[0] * 1000).toLocaleString() + '</td>'
+                + '<td>' + fmt(f[1], 8) + '</td>'
+                + '<td>' + fmt(f[2]) + '</td></tr>';
         }
         fillOrders.innerHTML = html;
 
