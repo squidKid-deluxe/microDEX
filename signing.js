@@ -1,7 +1,7 @@
 // signing.js – now uses the extension provider instead of bitsharesjs
 
 // Constants
-const END_OF_TIME_ISO = new Date(4e12).toISOString(); // far‑future timestamp
+const END_OF_TIME_ISO = "2096-10-02T07:06:40"; // far‑future timestamp (no ms)
 const KILL_OR_FILL = false;
 
 // Provider reference (set by initExtension from updater.js)
@@ -50,7 +50,7 @@ async function createOrder(price, amount, expiration, op) {
 
     const expirationIso = expiration === 0
         ? END_OF_TIME_ISO
-        : new Date(expiration * 1000).toISOString();
+        : new Date(expiration * 1000).toISOString().replace('.000Z', '');
 
     let min_to_receive, amount_to_sell;
 
