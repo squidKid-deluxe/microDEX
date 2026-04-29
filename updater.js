@@ -81,6 +81,7 @@ const cfgCurrency     = document.getElementById('cfg_currency');
 const cfgAsset        = document.getElementById('cfg_asset');
 const cfgSave         = document.getElementById('cfg_save');
 const cfgClose        = document.getElementById('cfg_close');
+const cfgSync         = document.getElementById('cfg_sync');
 const poolStatus      = document.getElementById('pool-status');
 
 // Load saved settings or use defaults
@@ -148,6 +149,84 @@ cfgSave.addEventListener('click', async () => {
 });
 
 /* ------------------------------------------------------------------ */
+/*  2b. Extension provider integration                                */
+/* ------------------------------------------------------------------ */
+var extensionProvider = null;
+var extensionReady = false;
+
+async function initExtension() {
+    return new Promise((resolve) => {
+        if (window.bitsharesWallet) {
+            extensionProvider = window.bitsharesWallet;
+            extensionReady = true;
+            resolve(extensionProvider);
+        } else {
+            window.addEventListener('bitsharesWalletReady', (e) => {
+                extensionProvider = e.detail.provider;
+                extensionReady = true;
+                resolve(extensionProvider);
+            }, { once: true });
+            setTimeout(() => {
+                if (!extensionReady) {
+                    console.warn('BitShares Wallet extension not detected');
+                    updateWalletStatus('Extension not installed', 'red');
+                    resolve(null);
+                }
+            }, 5000);
+        }
+    });
+}
+
+cfgSync.addEventListener('click', async () => {
+    const prov = extensionProvider || window.bitsharesWallet || window.bitshares;
+    if (!prov) {
+        alert('BitShares Wallet extension not detected. Please install it and reload.');
+        return;
+    }
+
+    try {
+        const result = await prov.connect();
+        if (!result.account || !result.account.name) {
+            throw new Error('No account connected or wallet locked');
+        }
+
+        cfgAccount.value = result.account.name;
+        metaNode.account_name = result.account.name;
+
+        dlog('ok', 'Account synced from extension: ' + result.account.name);
+    } catch (err) {
+        alert('Sync failed: ' + err.message);
+    }
+});
+
+function updateWalletStatus(text, color) {
+    const el = document.getElementById('wallet-status');
+    if (!el) return;
+    el.textContent = text;
+    el.className = color;
+}
+
+// Listen for wallet events from the extension
+window.addEventListener('message', (e) => {
+    if (e.source !== window) return;
+    if (e.data?.type !== 'BITSHARES_WALLET_EVENT') return;
+
+    const { event, data } = e.data;
+    if (event === 'accountChanged' && data) {
+        metaNode.account_name = data.name;
+        metaNode.account_id = data.id;
+        updateWalletStatus('Connected: ' + data.name, 'green');
+        dlog('info', 'Account changed to: ' + data.name);
+    } else if (event === 'locked') {
+        updateWalletStatus('Wallet locked', 'yellow');
+        dlog('warn', 'Wallet locked');
+    } else if (event === 'unlocked') {
+        updateWalletStatus('Wallet unlocked', 'green');
+        dlog('ok', 'Wallet unlocked');
+    }
+});
+
+/* ------------------------------------------------------------------ */
 /*  3.  Bootstrap: resolve cache from pool                            */
 /* ------------------------------------------------------------------ */
 async function bootstrap(settings) {
@@ -208,16 +287,6 @@ async function bootstrap(settings) {
 
         poolStatus.className = 'green';
         poolStatus.textContent = 'Connected — starting data poll...';
-
-        // Also set up the bitshares-js WebSocket for signing (used by signing.js)
-        try {
-            const status = pool.getNodeStatus();
-            if (status.connected) {
-                await wss_handshake(status.currentNodeUrl);
-            }
-        } catch (e) {
-            console.warn('bitshares-js handshake failed (signing will retry):', e);
-        }
 
         if (!polling) {
             polling = true;
@@ -510,6 +579,26 @@ function updateOrders() {
 /* ------------------------------------------------------------------ */
 (async function init() {
     dlog('info', 'microDEX client-only init');
+
+    // Initialize extension provider
+    await initExtension();
+    if (extensionProvider) {
+        setProvider(extensionProvider);
+        dlog('ok', 'Extension provider ready');
+        // Try to auto-connect and sync account
+        try {
+            const result = await extensionProvider.connect();
+            if (result.account && result.account.name) {
+                metaNode.account_name = result.account.name;
+                updateWalletStatus('Connected: ' + result.account.name, 'green');
+            }
+        } catch (e) {
+            dlog('warn', 'Auto-connect failed: ' + e.message);
+        }
+    } else {
+        dlog('warn', 'No extension provider found – trading will not work');
+        updateWalletStatus('Extension required', 'red');
+    }
 
     // Create pool
     pool = new GrapheneRPCPool({
