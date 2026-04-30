@@ -602,27 +602,7 @@ function updateOrders() {
 (async function init() {
     dlog('info', 'microDEX client-only init');
 
-    // Initialize extension provider
-    await initExtension();
-    if (extensionProvider) {
-        setProvider(extensionProvider);
-        dlog('ok', 'Extension provider ready');
-        // Try to auto-connect and sync account
-        try {
-            const result = await extensionProvider.connect();
-            if (result.account && result.account.name) {
-                metaNode.account_name = result.account.name;
-                updateWalletStatus('Connected: ' + result.account.name, 'green');
-            }
-        } catch (e) {
-            dlog('warn', 'Auto-connect failed: ' + e.message);
-        }
-    } else {
-        dlog('warn', 'No extension provider found – trading will not work');
-        updateWalletStatus('Extension required', 'red');
-    }
-
-    // Create pool
+    // Create pool first — don't wait for extension
     pool = new GrapheneRPCPool({
         maxRetries:      3,
         timeoutMs:       5000,
@@ -636,7 +616,7 @@ function updateOrders() {
     fillSettingsForm(settings);
     dlog('info', 'Settings loaded: ' + JSON.stringify(settings) + ' (saved=' + hasUserSaved + ')');
 
-    // Connect pool, then bootstrap
+    // Connect pool and bootstrap immediately
     try {
         poolStatus.textContent = 'Connecting to pool...';
         dlog('info', 'Connecting pool...');
@@ -652,6 +632,37 @@ function updateOrders() {
         dlog('err', 'Pool connection failed: ' + e.message);
         console.error('Pool connection error:', e);
     }
+
+    // Initialize extension provider in the background (non-blocking)
+    initExtension().then(() => {
+        if (extensionProvider) {
+            setProvider(extensionProvider);
+            dlog('ok', 'Extension provider ready');
+            // Try to auto-connect and sync account without blocking
+            extensionProvider.connect().then(result => {
+                if (result.account && result.account.name) {
+                    dlog('ok', 'Extension auto-connected: ' + result.account.name);
+                    updateWalletStatus('Connected: ' + result.account.name, 'green');
+                    // Update settings and re-bootstrap only if account differs
+                    const s = readSettingsForm();
+                    if (s.account !== result.account.name) {
+                        s.account = result.account.name;
+                        saveSettings(s);
+                        updateSettingsButton(true);
+                        cfgAccount.value = result.account.name;
+                        poolStatus.className = 'yellow';
+                        poolStatus.textContent = 'Synced account from extension...';
+                        bootstrap(s);
+                    }
+                }
+            }).catch(e => {
+                dlog('warn', 'Extension auto-connect declined/failed: ' + e.message);
+            });
+        } else {
+            dlog('warn', 'No extension provider found – trading via extension will not work');
+            updateWalletStatus('No extension', 'yellow');
+        }
+    });
 
     // Start DOM updates — single interval avoids competing timers
     setInterval(() => {

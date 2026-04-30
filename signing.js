@@ -16,21 +16,32 @@ function setProvider(p) { _provider = p; }
  * Throws an error if not, which will be caught by the caller.
  */
 async function verifyAccountMatch() {
-    if (!_provider) throw new Error('Wallet extension not connected');
+    if (!_provider) {
+        alert('Wallet extension is not connected. Please connect your wallet before signing transactions.');
+        throw new Error('Wallet extension not connected');
+    }
 
-    // Check connection status
-    const conn = await _provider.checkConnection();
-    if (!conn.connected) {
-        throw new Error('Wallet not connected to this site. Please connect using the extension.');
+    let conn;
+    try {
+        conn = await _provider.checkConnection();
+    } catch (e) {
+        alert('Could not reach wallet extension: ' + e.message);
+        throw new Error('Wallet connection check failed');
+    }
+
+    if (!conn || !conn.connected) {
+        alert('Wallet is not connected to this site. Please connect using the extension before signing.');
+        throw new Error('Wallet not connected');
     }
 
     // If we have both account names, compare
     if (conn.account && metaNode.account_name && conn.account.name !== metaNode.account_name) {
-        throw new Error(
-            `Account mismatch! Extension connected to "${conn.account.name}", ` +
-            `but microDEX is set to "${metaNode.account_name}". ` +
+        alert(
+            'Account mismatch! Extension connected to "' + conn.account.name + '", ' +
+            'but microDEX is set to "' + metaNode.account_name + '". ' +
             'Use the "Sync from Extension" button in Settings to align them.'
         );
+        throw new Error('Account mismatch');
     }
 }
 
@@ -42,11 +53,19 @@ async function createOrder(price, amount, expiration, op) {
     // Ensure account matches before proceeding
     await verifyAccountMatch();
 
-    if (!_provider) throw new Error('Wallet extension not connected');
+    if (!_provider) {
+        alert('Wallet extension not connected');
+        throw new Error('Wallet extension not connected');
+    }
 
     // Ensure we are connected (extension may require approval)
-    const { connected } = await _provider.checkConnection();
-    if (!connected) await _provider.connect();
+    try {
+        const { connected } = await _provider.checkConnection();
+        if (!connected) await _provider.connect();
+    } catch (e) {
+        alert('Could not connect to wallet. Please make sure your wallet extension is unlocked and authorized this site.');
+        throw new Error('Failed to connect wallet: ' + e.message);
+    }
 
     const expirationIso = expiration === 0
         ? END_OF_TIME_ISO
@@ -110,10 +129,18 @@ async function cancelOrders(orderIds) {
     // Ensure account matches before proceeding
     await verifyAccountMatch();
 
-    if (!_provider) throw new Error('Wallet extension not connected');
+    if (!_provider) {
+        alert('Wallet extension not connected');
+        throw new Error('Wallet extension not connected');
+    }
 
-    const { connected } = await _provider.checkConnection();
-    if (!connected) await _provider.connect();
+    try {
+        const { connected } = await _provider.checkConnection();
+        if (!connected) await _provider.connect();
+    } catch (e) {
+        alert('Could not connect to wallet. Please make sure your wallet extension is unlocked and authorized this site.');
+        throw new Error('Failed to connect wallet: ' + e.message);
+    }
 
     const operations = orderIds.map(orderId => [2, { // 2 = limit_order_cancel
         fee: { amount: 0, asset_id: "1.3.0" },
