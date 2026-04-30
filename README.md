@@ -1,6 +1,6 @@
 # microDEX - Minimalist BitShares UI
 
-> A dependency-free, real-time trading interface for the BitShares blockchain - built with vanilla HTML, CSS, and JavaScript. No React. No Vue. No Tailwind. No Python. Just raw data, fast.
+> A dependency-free, real-time trading interface for the BitShares blockchain - built with vanilla HTML, CSS, and JavaScript. No React. No Vue. No Tailwind. No Python. No external libraries. Just raw data, fast.
 
 ![microDEX Screenshot](screenshot.png)
 
@@ -19,11 +19,12 @@ No frameworks. No bloat. No dependencies. Pure performance.
 - Realtime Order Book (Buy & Sell) with cumulative volume
 - Live Fill History (recent trades)
 - Open Orders Tracker with cancel support
-- Buy/Sell Interface with Wallet Lock/Unlock
+- Buy/Sell Interface with extension-based signing
 - Multi-Node Pool with automatic failover (15+ nodes)
 - Node Health Monitoring (ping, latency, status)
 - Settings UI - configurable trading pair, account, and assets
-- Vanilla HTML/CSS/JS - Zero External Libraries (except bitsharesjs for crypto)
+- Vanilla HTML/CSS/JS - Zero External Dependencies
+- Browser Extension Signing - All transactions signed via BitShares wallet extension
 - Client-Side Only - No backend, no Python, no server required
 - Dark Theme with terminal-style layout
 
@@ -38,7 +39,7 @@ No frameworks. No bloat. No dependencies. Pure performance.
 | **Order Book**      | Cumulative volume, price, and volume per level (buy/sell)                  |
 | **Open Orders**     | Type, Price, Volume of your active orders                                  |
 | **Fill Orders**     | Timestamp, Price, Volume of recent fills                                   |
-| **Wallet Status**   | Locked/Unlocked state + WIF input field                                    |
+| **Wallet Status**   | Extension connection state + synced account name                                 |
 | **Trade Controls**  | Buy/Sell price & amount fields + "BUY", "SELL", "CANCEL ALL" buttons       |
 | **Settings**        | Trading pair, account name, asset configuration                            |
 
@@ -48,21 +49,20 @@ No frameworks. No bloat. No dependencies. Pure performance.
 
 1. **Node Pool**: `graphene-rpc.js` manages a pool of 15+ BitShares nodes with automatic failover and health tracking via WebSocket connections.
 2. **Data Polling**: `updater.js` polls the node pool every 2.5 seconds for order book, history, balances, and account data.
-3. **Wallet & Trading**: `signing.js` handles WIF key management and transaction signing using `bitsharesjs.min.js` - all client-side.
+3. **Wallet & Trading**: `signing.js` sends transactions to your BitShares wallet extension for approval and signing - all client-side, no private keys ever touch the app.
 4. **UI**: Vanilla JS dynamically updates the DOM - no virtual DOM, no reactivity engine.
 
 ---
 
 ## Quick Start
 
-### Option 1: Open Directly
-Simply open `index.html` in your browser. Chrome, Firefox, and Safari all work.
+You **must** serve the files via HTTP - opening `index.html` directly via `file://` will not work. Browser extensions (required for signing) do not inject into `file://` pages for security reasons.
 
-### Option 2: Serve Locally
+### Serve Locally
 ```bash
 python3 -m http.server 8080
 ```
-Then visit `http://localhost:8080/index.html`
+Then visit `http://localhost:8080`
 
 > **No installation required.** No `pip install`, no `npm install`, no dependencies to download.
 
@@ -70,10 +70,10 @@ Then visit `http://localhost:8080/index.html`
 
 ## Wallet & Trading
 
-- **WIF Input**: Enter your private key (WIF format) to unlock wallet. This never leaves your browser - all signing happens client-side.
-- **Lock/Unlock**: Toggle wallet state safely. Once locked, your WIF is deleted from memory after 5 minutes.
-- **Place Orders**: Enter price and amount → Click "BUY" or "SELL".
-- **Cancel All**: Cancel all open orders at once.
+- **Browser Extension Required**: microDEX uses your BitShares wallet extension for all signing. You must install a compatible extension and connect it before placing trades.
+- **Sync Account**: Use the "Sync from Extension" button in Settings to align your microDEX account with your extension's connected account.
+- **Place Orders**: Enter price and amount → Click "BUY" or "SELL". Your extension will prompt you to approve each transaction.
+- **Cancel All**: Cancel all open orders at once (requires extension approval).
 - **Settings**: Click the settings button to configure trading pair, account name, and assets. Settings are saved in localStorage.
 - ⚠️ **Orders take a few seconds to appear - click once, then confirm.**
 
@@ -110,15 +110,14 @@ You can customize this list in `graphene-rpc.js` in the `defaultNodes` array.
 ```
 /workspace/
 ├── index.html          # Main SPA (Single Page Application)
-├── graphene-rpc.js        # WebSocket client + multi-node pool with failover
-├── updater.js             # Data polling, settings UI, DOM updates
-├── signing.js             # Wallet & transaction operations
-├── callbacks.js           # UI event handlers (buy/sell/cancel)
-├── bitsharesjs.min.js     # BitShares crypto library (minified)
-├── main.css               # Dark theme, terminal-style layout
-├── buttons.css            # Button styles (buy/sell/cancel)
-├── favicon.png            # Site icon
-└── screenshot.png         # UI screenshot
+├── graphene-rpc.js     # WebSocket client + multi-node pool with failover
+├── updater.js          # Data polling, settings UI, DOM updates, extension init
+├── signing.js          # Transaction building via extension provider
+├── callbacks.js        # UI event handlers (buy/sell/cancel)
+├── main.css            # Dark theme, terminal-style layout
+├── buttons.css         # Button styles (buy/sell/cancel)
+├── favicon.png         # Site icon
+└── screenshot.png      # UI screenshot
 ```
 
 ---
@@ -143,6 +142,6 @@ WTFPL - Do what you want. It's open source, after all.
 
 ## Credits
 
-- Uses `bitsharesjs` for cryptographic operations and transaction signing
+- Uses the BitShares wallet extension (`window.bitsharesWallet`) for transaction signing
 - Inspired by the ethos of minimalism and decentralization
 - For the BitShares community - keep building!
